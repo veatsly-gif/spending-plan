@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Telegram Approvals{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">Telegram</span>
+        <h1>Pending Approval Requests</h1>
+        <p>Users who started the bot and are waiting for access.</p>
+
+        <section class="table-wrap reveal delay">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Telegram ID</th>
+                        <th>Name</th>
+                        <th>Requested At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tgUser in telegramUsers %}
+                        <tr>
+                            <td>{{ tgUser.id }}</td>
+                            <td>{{ tgUser.telegramId }}</td>
+                            <td>{{ tgUser.firstName }} {{ tgUser.lastName ?? '' }}</td>
+                            <td>{{ tgUser.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="btn btn-ghost" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}">Match existing user</a>
+                                    <a class="btn" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}">Create user + approve</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty"><strong>No pending Telegram users.</strong></div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+{% endblock %}

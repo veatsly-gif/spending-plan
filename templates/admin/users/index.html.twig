@@ -1,0 +1,53 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">User Directory</span>
+        <h1>Users</h1>
+        <div class="actions">
+            <a class="btn" href="{{ path('admin_users_new') }}">Create User</a>
+        </div>
+
+        <section class="table-wrap reveal delay">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Roles</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.roles|join(', ') }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="btn btn-ghost" href="{{ path('admin_users_edit', {id: user.id}) }}">Edit</a>
+                                    <a class="btn btn-ghost" href="{{ path('admin_users_password', {id: user.id}) }}">Password</a>
+                                    <form method="post" action="{{ path('admin_users_delete', {id: user.id}) }}" style="display:inline;" onsubmit="return confirm('Delete user {{ user.username }}?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
+                                        <button type="submit" class="btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4">
+                                <div class="empty">
+                                    <strong>No users found</strong>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+{% endblock %}

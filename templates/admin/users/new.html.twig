@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Create User{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 620px; margin-inline: auto;">
+        <span class="kicker">User Management</span>
+        <h1>Create User</h1>
+        {{ form_start(form) }}
+            {{ form_row(form.username) }}
+            {{ form_row(form.roles) }}
+            {{ form_row(form.plainPassword.first) }}
+            {{ form_row(form.plainPassword.second) }}
+            <div class="actions">
+                <button type="submit">Create</button>
+                <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">Back</a>
+            </div>
+        {{ form_end(form) }}
+    </main>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Approve Telegram User{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 680px; margin-inline: auto;">
+        <span class="kicker">Telegram Approval</span>
+        <h1>Match Existing Local User</h1>
+        <p>
+            Telegram: <strong>{{ telegramUser.firstName }} {{ telegramUser.lastName ?? '' }}</strong>
+            ({{ telegramUser.telegramId }})
+        </p>
+
+        {{ form_start(approveForm) }}
+            {{ form_row(approveForm.user) }}
+            <div class="actions">
+                <button type="submit">Approve and link</button>
+                <a class="btn btn-ghost" href="{{ path('admin_telegram_pending') }}">Back</a>
+            </div>
+        {{ form_end(approveForm) }}
+    </main>
+{% endblock %}

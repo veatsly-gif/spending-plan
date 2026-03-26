@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login{% endblock %}
+
+{% block body %}
+    <div class="auth-wrap">
+        <main class="auth-card reveal">
+            <span class="kicker">Secure Access</span>
+            <h1>Sign In</h1>
+
+            {% if error %}
+                <div class="flash flash-error">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+            {% endif %}
+
+            <form method="post">
+                <div>
+                    <label for="username">Username</label>
+                    <input id="username" name="_username" type="text" value="{{ last_username }}" required autofocus>
+                </div>
+                <div>
+                    <label for="password">Password</label>
+                    <input id="password" name="_password" type="password" required>
+                </div>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                <button type="submit">Sign in</button>
+            </form>
+
+            <p class="subtle">Seed users: <code>admin/admin</code> and <code>test/temp</code></p>
+        </main>
+    </div>
+{% endblock %}

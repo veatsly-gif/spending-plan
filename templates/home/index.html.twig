@@ -3,10 +3,13 @@
 {% block title %}Spending Plan{% endblock %}
 
 {% block body %}
-    <main style="max-width: 860px; margin: 48px auto; font-family: Arial, sans-serif; line-height: 1.6;">
-        <h1>Spending Plan</h1>
-        <p>Symfony + PostgreSQL + Docker environment is initialized.</p>
-        <p>Web route: <code>/</code></p>
-        <p>API route: <code>/api/health</code></p>
+    <main class="hero reveal">
+        <span class="kicker">Personal Finance Core</span>
+        <h1>Home Accounting Workspace</h1>
+        <p>Track income in EUR and USDT, spend in GEL, and manage your monthly cashflow from web and Telegram bot integrations.</p>
+        <div class="actions">
+            <a class="btn" href="{{ path('app_login') }}">Open Login</a>
+            <a class="btn btn-ghost" href="{{ path('api_health') }}">API Health</a>
+        </div>
     </main>
 {% endblock %}

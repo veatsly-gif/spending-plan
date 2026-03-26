@@ -1,14 +1,14 @@
 up:
-	docker compose up -d --build
+	docker compose -f docker-compose.yaml up -d --build
 
 down:
-	docker compose down
+	docker compose -f docker-compose.yaml down
 
 install:
-	docker compose run --rm php composer install
+	docker compose -f docker-compose.yaml run --rm php composer install
 
 migrate:
-	docker compose run --rm php php bin/console doctrine:migrations:migrate --no-interaction
+	docker compose -f docker-compose.yaml run --rm php php bin/console doctrine:migrations:migrate --no-interaction
 
 bash:
-	docker compose exec php sh
+	docker compose -f docker-compose.yaml exec php sh

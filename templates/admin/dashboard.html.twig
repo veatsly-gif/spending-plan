@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">Administration</span>
+        <h1>Control Center</h1>
+        <p>Manage users, Telegram approvals, and platform settings.</p>
+
+        <section class="grid metrics">
+            <article class="metric reveal delay">
+                <h3>User Management</h3>
+                <p>Create and manage local users.</p>
+                <div class="actions">
+                    <a class="btn" href="{{ path('admin_users_index') }}">Open users</a>
+                </div>
+            </article>
+            <article class="metric reveal delay">
+                <h3>Telegram Approvals</h3>
+                <p>Pending requests: <strong>{{ pendingTelegramUsers }}</strong></p>
+                <div class="actions">
+                    <a class="btn" href="{{ path('admin_telegram_pending') }}">Review requests</a>
+                </div>
+            </article>
+        </section>
+    </main>
+{% endblock %}

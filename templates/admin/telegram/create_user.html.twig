@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Create User and Approve{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 680px; margin-inline: auto;">
+        <span class="kicker">Telegram Approval</span>
+        <h1>Create Local User and Approve</h1>
+        <p>
+            Telegram: <strong>{{ telegramUser.firstName }} {{ telegramUser.lastName ?? '' }}</strong>
+            ({{ telegramUser.telegramId }})
+        </p>
+
+        {{ form_start(createForm) }}
+            {{ form_row(createForm.username) }}
+            {{ form_row(createForm.password) }}
+            <div class="actions">
+                <button type="submit">Create and approve</button>
+                <a class="btn btn-ghost" href="{{ path('admin_telegram_pending') }}">Back</a>
+            </div>
+        {{ form_end(createForm) }}
+    </main>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 620px; margin-inline: auto;">
+        <span class="kicker">User Management</span>
+        <h1>Edit {{ userEntity.username }}</h1>
+        {{ form_start(form) }}
+            {{ form_row(form.username) }}
+            {{ form_row(form.roles) }}
+            <div class="actions">
+                <button type="submit">Save</button>
+                <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">Back</a>
+            </div>
+        {{ form_end(form) }}
+    </main>
+{% endblock %}

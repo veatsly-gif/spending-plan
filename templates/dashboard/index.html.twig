@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">Overview</span>
+        <h1>Home Accounting Dashboard</h1>
+        <p>Starter stub for balances, monthly operations, and exchange monitoring.</p>
+
+        <section class="grid metrics">
+            <article class="metric reveal delay">
+                <h3>Balances</h3>
+                <p>EUR: 0.00</p>
+                <p>USDT: 0.00</p>
+                <p>GEL: 0.00</p>
+            </article>
+            <article class="metric reveal delay">
+                <h3>Income (Month)</h3>
+                <p>0 records</p>
+            </article>
+            <article class="metric reveal delay">
+                <h3>Spendings (Month)</h3>
+                <p>0 records</p>
+            </article>
+            <article class="metric reveal delay">
+                <h3>FX Snapshot</h3>
+                <p>EUR/GEL: n/a</p>
+                <p>USDT/GEL: n/a</p>
+            </article>
+        </section>
+    </main>
+{% endblock %}
