@@ -10,6 +10,7 @@ use App\Form\Admin\TelegramApproveType;
 use App\Form\Admin\TelegramCreateUserType;
 use App\Repository\TelegramUserRepository;
 use App\Repository\UserRepository;
+use App\Service\Controller\Admin\AdminTelegramControllerService;
 use App\Service\TelegramBotService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,12 +23,17 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/admin/telegram')]
 final class AdminTelegramController extends AbstractController
 {
+    public function __construct(
+        private readonly AdminTelegramControllerService $service,
+    ) {
+    }
+
     #[Route('', name: 'admin_telegram_pending', methods: ['GET'])]
     public function index(TelegramUserRepository $telegramUserRepository): Response
     {
-        return $this->render('admin/telegram/pending.html.twig', [
-            'telegramUsers' => $telegramUserRepository->findPending(),
-        ]);
+        $dto = $this->service->buildPendingViewData($telegramUserRepository);
+
+        return $this->render('admin/telegram/pending.html.twig', $dto->toArray());
     }
 
     #[Route('/{id}/approve', name: 'admin_telegram_approve', methods: ['GET', 'POST'])]
@@ -37,7 +43,8 @@ final class AdminTelegramController extends AbstractController
         TelegramUserRepository $telegramUserRepository,
         TelegramBotService $telegramBotService,
     ): Response {
-        if (TelegramUser::STATUS_AUTHORIZED === $telegramUser->getStatus()) {
+        $decision = $this->service->shouldRedirectApproved($telegramUser);
+        if ($decision->value) {
             return $this->redirectToRoute('admin_telegram_pending');
         }
 
@@ -50,16 +57,12 @@ final class AdminTelegramController extends AbstractController
                 throw $this->createNotFoundException('User is required.');
             }
 
-            $telegramUser
-                ->setUser($selectedUser)
-                ->setStatus(TelegramUser::STATUS_AUTHORIZED)
-                ->setAuthorizedAt(new \DateTimeImmutable());
-            $telegramUserRepository->save($telegramUser, true);
+            $result = $this->service->approveByLinkingUser($telegramUser, $selectedUser, $telegramUserRepository, $telegramBotService);
+            if (!$result->success) {
+                $this->addFlash('error', $result->errorMessage ?? 'Unable to approve telegram user.');
 
-            $telegramBotService->sendMessage(
-                $telegramUser->getTelegramId(),
-                sprintf('Approved. You are linked to user %s. Bot stub is available.', $selectedUser->getUsername())
-            );
+                return $this->redirectToRoute('admin_telegram_pending');
+            }
 
             $this->addFlash('success', 'Telegram user approved and linked.');
 
@@ -81,39 +84,29 @@ final class AdminTelegramController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         TelegramBotService $telegramBotService,
     ): Response {
-        $form = $this->createForm(TelegramCreateUserType::class, [
-            'username' => sprintf('tg_%s', $telegramUser->getTelegramId()),
-        ]);
+        $defaultsDto = $this->service->buildCreateFormDefaults($telegramUser);
+        $form = $this->createForm(TelegramCreateUserType::class, $defaultsDto->toArray());
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $username = mb_strtolower(trim((string) $form->get('username')->getData()));
             $password = (string) $form->get('password')->getData();
 
-            if (null !== $userRepository->findOneBy(['username' => $username])) {
-                $this->addFlash('error', 'Username already exists.');
+            $result = $this->service->createUserAndApprove(
+                $telegramUser,
+                $username,
+                $password,
+                $userRepository,
+                $telegramUserRepository,
+                $passwordHasher,
+                $telegramBotService,
+            );
+
+            if (!$result->success) {
+                $this->addFlash('error', $result->errorMessage ?? 'Unable to create local user.');
 
                 return $this->redirectToRoute('admin_telegram_create_user', ['id' => $telegramUser->getId()]);
             }
-
-            $user = (new User())
-                ->setUsername($username)
-                ->setRoles(['ROLE_USER'])
-                ->setPassword('temp');
-            $user->setPassword($passwordHasher->hashPassword($user, $password));
-
-            $userRepository->save($user, true);
-
-            $telegramUser
-                ->setUser($user)
-                ->setStatus(TelegramUser::STATUS_AUTHORIZED)
-                ->setAuthorizedAt(new \DateTimeImmutable());
-            $telegramUserRepository->save($telegramUser, true);
-
-            $telegramBotService->sendMessage(
-                $telegramUser->getTelegramId(),
-                sprintf('Approved. A local account "%s" was created for you.', $user->getUsername())
-            );
 
             $this->addFlash('success', 'Local user created and Telegram user approved.');
 
@@ -124,5 +117,28 @@ final class AdminTelegramController extends AbstractController
             'telegramUser' => $telegramUser,
             'createForm' => $form,
         ]);
+    }
+
+    #[Route('/{id}/reject', name: 'admin_telegram_reject', methods: ['POST'])]
+    public function reject(
+        TelegramUser $telegramUser,
+        Request $request,
+        TelegramUserRepository $telegramUserRepository,
+        TelegramBotService $telegramBotService,
+    ): Response {
+        if (!$this->isCsrfTokenValid('reject_telegram_'.$telegramUser->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $result = $this->service->rejectTelegramUser($telegramUser, $telegramUserRepository, $telegramBotService);
+        if (!$result->success) {
+            $this->addFlash('error', $result->errorMessage ?? 'Unable to reject telegram user.');
+
+            return $this->redirectToRoute('admin_telegram_pending');
+        }
+
+        $this->addFlash('success', 'Telegram registration request rejected.');
+
+        return $this->redirectToRoute('admin_telegram_pending');
     }
 }

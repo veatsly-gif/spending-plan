@@ -11,9 +11,6 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       APP_DEBUG: ${APP_DEBUG:-1}
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?serverVersion=16&charset=utf8
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,5 +44,24 @@ services:
       retries: 5
       start_period: 10s
 
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: spending_plan_postgres_test
+    environment:
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-spending_plan_test}
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-app_test}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-app_test}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_TEST_USER:-app_test} -d ${POSTGRES_TEST_DB:-spending_plan_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   postgres_data:
+  postgres_test_data:

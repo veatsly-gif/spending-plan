@@ -12,3 +12,9 @@ migrate:
 
 bash:
 	docker compose -f docker-compose.yaml exec php sh
+
+test:
+	docker compose -f docker-compose.yaml exec -T php php vendor/bin/phpunit -c phpunit.xml.dist
+
+mutation:
+	docker compose -f docker-compose.yaml exec -T php sh -lc 'XDEBUG_MODE=coverage php vendor/bin/infection --configuration=infection.json.dist --threads=max'

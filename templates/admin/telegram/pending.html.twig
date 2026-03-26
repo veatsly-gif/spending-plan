@@ -30,6 +30,10 @@
                                 <div class="actions">
                                     <a class="btn btn-ghost" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}">Match existing user</a>
                                     <a class="btn" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}">Create user + approve</a>
+                                    <form method="post" action="{{ path('admin_telegram_reject', {id: tgUser.id}) }}" onsubmit="return confirm('Reject this Telegram registration request?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('reject_telegram_' ~ tgUser.id) }}">
+                                        <button class="btn btn-danger" type="submit">Reject</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

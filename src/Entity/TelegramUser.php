@@ -14,6 +14,7 @@ class TelegramUser
 {
     public const STATUS_PENDING = 'pending';
     public const STATUS_AUTHORIZED = 'authorized';
+    public const STATUS_REJECTED = 'rejected';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

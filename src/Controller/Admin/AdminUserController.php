@@ -9,6 +9,7 @@ use App\Form\Admin\AdminUserCreateType;
 use App\Form\Admin\AdminUserEditType;
 use App\Form\Admin\AdminUserPasswordType;
 use App\Repository\UserRepository;
+use App\Service\Controller\Admin\AdminUserControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,28 +21,36 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/admin/users')]
 final class AdminUserController extends AbstractController
 {
+    public function __construct(
+        private readonly AdminUserControllerService $service,
+    ) {
+    }
+
     #[Route('', name: 'admin_users_index', methods: ['GET'])]
     public function index(UserRepository $userRepository): Response
     {
-        return $this->render('admin/users/index.html.twig', [
-            'users' => $userRepository->findBy([], ['id' => 'ASC']),
-        ]);
+        $dto = $this->service->buildIndexViewData($userRepository);
+
+        return $this->render('admin/users/index.html.twig', $dto->toArray());
     }
 
     #[Route('/new', name: 'admin_users_new', methods: ['GET', 'POST'])]
     public function new(Request $request, UserRepository $userRepository, UserPasswordHasherInterface $passwordHasher): Response
     {
-        $user = new User();
-        $user->setRoles(['ROLE_USER']);
+        $draftDto = $this->service->createDraftUser();
+        $user = $draftDto->user;
 
         $form = $this->createForm(AdminUserCreateType::class, $user);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $plainPassword = (string) $form->get('plainPassword')->getData();
-            $user->setPassword($passwordHasher->hashPassword($user, $plainPassword));
+            $result = $this->service->createUser($user, $plainPassword, $userRepository, $passwordHasher);
+            if (!$result->success) {
+                $this->addFlash('error', $result->errorMessage ?? 'Unable to create user.');
 
-            $userRepository->save($user, true);
+                return $this->redirectToRoute('admin_users_index');
+            }
             $this->addFlash('success', 'User created.');
 
             return $this->redirectToRoute('admin_users_index');
@@ -59,7 +68,12 @@ final class AdminUserController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $userRepository->save($user, true);
+            $result = $this->service->updateUser($user, $userRepository);
+            if (!$result->success) {
+                $this->addFlash('error', $result->errorMessage ?? 'Unable to update user.');
+
+                return $this->redirectToRoute('admin_users_index');
+            }
             $this->addFlash('success', 'User updated.');
 
             return $this->redirectToRoute('admin_users_index');
@@ -79,8 +93,12 @@ final class AdminUserController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $plainPassword = (string) $form->get('plainPassword')->getData();
-            $user->setPassword($passwordHasher->hashPassword($user, $plainPassword));
-            $userRepository->save($user, true);
+            $result = $this->service->changeUserPassword($user, $plainPassword, $userRepository, $passwordHasher);
+            if (!$result->success) {
+                $this->addFlash('error', $result->errorMessage ?? 'Unable to change password.');
+
+                return $this->redirectToRoute('admin_users_index');
+            }
             $this->addFlash('success', 'Password changed.');
 
             return $this->redirectToRoute('admin_users_index');
@@ -95,17 +113,28 @@ final class AdminUserController extends AbstractController
     #[Route('/{id}/delete', name: 'admin_users_delete', methods: ['POST'])]
     public function delete(User $user, Request $request, UserRepository $userRepository): Response
     {
-        if (!$this->isCsrfTokenValid('delete_user_'.$user->getId(), (string) $request->request->get('_token'))) {
+        $validationResult = $this->service->validateDelete(
+            $this->isCsrfTokenValid('delete_user_'.$user->getId(), (string) $request->request->get('_token')),
+            $this->getUser() instanceof User ? $this->getUser() : null,
+            $user,
+        );
+
+        if (!$validationResult->success && 'Invalid CSRF token.' === $validationResult->errorMessage) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        if ($this->getUser() instanceof User && $this->getUser()->getId() === $user->getId()) {
-            $this->addFlash('error', 'You cannot delete your own account.');
+        if (!$validationResult->success) {
+            $this->addFlash('error', $validationResult->errorMessage ?? 'Unable to remove user.');
 
             return $this->redirectToRoute('admin_users_index');
         }
 
-        $userRepository->remove($user, true);
+        $result = $this->service->removeUser($user, $userRepository);
+        if (!$result->success) {
+            $this->addFlash('error', $result->errorMessage ?? 'Unable to remove user.');
+
+            return $this->redirectToRoute('admin_users_index');
+        }
         $this->addFlash('success', 'User removed.');
 
         return $this->redirectToRoute('admin_users_index');

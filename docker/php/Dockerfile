@@ -6,6 +6,11 @@ COPY docker/php/conf.d/app.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
 
 FROM base AS dev
+RUN apk add --no-cache $PHPIZE_DEPS linux-headers \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug \
+    && apk del $PHPIZE_DEPS linux-headers
+COPY docker/php/conf.d/xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug.ini
 CMD ["php-fpm"]
 
 FROM base AS prod

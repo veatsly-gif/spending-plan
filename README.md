@@ -76,6 +76,22 @@ Default users after migration:
 ```bash
 source .env
 curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
-  -d "url=https://<PUBLIC_HOST>/api/telegram/webhook" \
+ -d "url=https://<PUBLIC_HOST>/api/telegram/webhook" \
   -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}"
+```
+
+## Testing
+
+Run PHPUnit:
+
+```bash
+make test
+```
+
+The test suite uses a dedicated PostgreSQL service (`postgres_test`) with fixture-driven data loading and transaction rollback per test.
+
+Run mutation testing (Infection):
+
+```bash
+make mutation
 ```
