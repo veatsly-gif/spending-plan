@@ -95,3 +95,46 @@ Run mutation testing (Infection):
 ```bash
 make mutation
 ```
+
+## Xdebug + PhpStorm
+
+Project is preconfigured for Xdebug in Docker. In `.env` set:
+
+```bash
+XDEBUG_MODE=debug,develop
+XDEBUG_CLIENT_HOST=host.docker.internal
+XDEBUG_CLIENT_PORT=9008
+XDEBUG_IDEKEY=PHPSTORM
+```
+
+Apply config:
+
+```bash
+docker compose -f docker-compose.yaml up -d --build php
+```
+
+PhpStorm setup:
+
+1. `Settings > PHP`:
+   - Add CLI Interpreter: `From Docker Compose`
+   - Service: `php`
+   - Path mappings: project root -> `/var/www/app`
+2. `Settings > PHP > Servers`:
+   - Name: `spending-plan`
+   - Host: `localhost`
+   - Port: `8188`
+   - Debugger: `Xdebug`
+   - Use path mappings: project root -> `/var/www/app`
+3. `Settings > PHP > Debug`:
+   - Xdebug port: `9008`
+   - Enable `Can accept external connections`
+
+Web debugging:
+
+1. Start `Start Listening for PHP Debug Connections` in PhpStorm.
+2. Open app URL in browser and breakpoints will be hit.
+
+Console debugging:
+
+1. Run command from PhpStorm terminal/run config.
+2. Keep `Start Listening for PHP Debug Connections` enabled.
