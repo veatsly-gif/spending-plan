@@ -1,0 +1,13 @@
+notifications:
+  - code: missing_next_month_spending_plans_daily
+    type: time_based
+    date:
+      day_of_month_gt: 25
+    triggers:
+      - missing_next_month_spending_plans
+    delivery_types:
+      - pop-up
+    template: spending_plan_missing_next_month
+    frequency:
+      mode: interval
+      interval_seconds: 86400

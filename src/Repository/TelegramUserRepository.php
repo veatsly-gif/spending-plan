@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\TelegramUser;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -38,5 +39,16 @@ class TelegramUserRepository extends ServiceEntityRepository
     public function countPending(): int
     {
         return $this->count(['status' => TelegramUser::STATUS_PENDING]);
+    }
+
+    /**
+     * @return list<TelegramUser>
+     */
+    public function findAuthorizedByUser(User $user): array
+    {
+        return $this->findBy(
+            ['status' => TelegramUser::STATUS_AUTHORIZED, 'user' => $user],
+            ['id' => 'ASC']
+        );
     }
 }
