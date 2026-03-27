@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Repository\SpendingPlanRepository;
 use App\Repository\TelegramUserRepository;
 use App\Service\Controller\Admin\AdminDashboardControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,9 +21,15 @@ final class AdminController extends AbstractController
     }
 
     #[Route('/admin', name: 'admin_dashboard', methods: ['GET'])]
-    public function __invoke(TelegramUserRepository $telegramUserRepository): Response
+    public function __invoke(
+        TelegramUserRepository $telegramUserRepository,
+        SpendingPlanRepository $spendingPlanRepository,
+    ): Response
     {
-        $dto = $this->service->buildViewData($telegramUserRepository);
+        $dto = $this->service->buildViewData(
+            $telegramUserRepository,
+            $spendingPlanRepository
+        );
 
         return $this->render('admin/dashboard.html.twig', $dto->toArray());
     }

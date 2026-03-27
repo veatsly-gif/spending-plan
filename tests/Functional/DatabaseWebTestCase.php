@@ -125,11 +125,15 @@ abstract class DatabaseWebTestCase extends WebTestCase
         // PhpStorm may run PHPUnit with --no-configuration, so force Symfony test env here.
         $defaultTestDatabaseUrl = 'postgresql://app_test:app_test@postgres_test:5432/spending_plan_test?serverVersion=16&charset=utf8';
         $testDatabaseUrl = getenv('TEST_DATABASE_URL') ?: getenv('DATABASE_URL') ?: $defaultTestDatabaseUrl;
+        $defaultTestRedisDsn = 'redis://redis:6379/15';
+        $testRedisDsn = getenv('TEST_REDIS_DSN') ?: $defaultTestRedisDsn;
 
         putenv('APP_ENV=test');
         putenv('APP_DEBUG=1');
         putenv('TEST_DATABASE_URL='.$testDatabaseUrl);
         putenv('DATABASE_URL='.$testDatabaseUrl);
+        putenv('TEST_REDIS_DSN='.$testRedisDsn);
+        putenv('REDIS_DSN='.$testRedisDsn);
         putenv('DEFAULT_URI='.((string) (getenv('DEFAULT_URI') ?: 'http://localhost:8188')));
         putenv('APP_SECRET='.((string) (getenv('APP_SECRET') ?: 'test-secret')));
         putenv('TELEGRAM_WEBHOOK_SECRET='.((string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret')));
@@ -138,6 +142,8 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $_ENV['APP_DEBUG'] = '1';
         $_ENV['TEST_DATABASE_URL'] = $testDatabaseUrl;
         $_ENV['DATABASE_URL'] = $testDatabaseUrl;
+        $_ENV['TEST_REDIS_DSN'] = $testRedisDsn;
+        $_ENV['REDIS_DSN'] = $testRedisDsn;
         $_ENV['DEFAULT_URI'] = (string) (getenv('DEFAULT_URI') ?: 'http://localhost:8188');
         $_ENV['APP_SECRET'] = (string) (getenv('APP_SECRET') ?: 'test-secret');
         $_ENV['TELEGRAM_WEBHOOK_SECRET'] = (string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret');
@@ -146,6 +152,8 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $_SERVER['APP_DEBUG'] = '1';
         $_SERVER['TEST_DATABASE_URL'] = $testDatabaseUrl;
         $_SERVER['DATABASE_URL'] = $testDatabaseUrl;
+        $_SERVER['TEST_REDIS_DSN'] = $testRedisDsn;
+        $_SERVER['REDIS_DSN'] = $testRedisDsn;
         $_SERVER['DEFAULT_URI'] = (string) (getenv('DEFAULT_URI') ?: 'http://localhost:8188');
         $_SERVER['APP_SECRET'] = (string) (getenv('APP_SECRET') ?: 'test-secret');
         $_SERVER['TELEGRAM_WEBHOOK_SECRET'] = (string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret');

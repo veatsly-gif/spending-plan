@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Spending Plans{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">Planning</span>
+        <h1>Spending Plans</h1>
+        <p>Use tabs by month. Approve or delete suggestions without reloading.</p>
+
+        <div class="actions">
+            <a class="btn" href="{{ path('admin_spending_plans_new', {month: selectedMonthKey}) }}">Create plan</a>
+        </div>
+
+        <nav class="sp-tabs" aria-label="Spending plan months">
+            {% for tab in monthTabs %}
+                <a
+                    href="{{ path('admin_spending_plans_index', {month: tab.monthKey}) }}"
+                    class="sp-tab {{ tab.active ? 'is-active' : '' }} {{ tab.needsAttention ? 'is-alert' : '' }}"
+                >
+                    {{ tab.label }}
+                    {% if tab.needsAttention %}
+                        <span class="dot">!</span>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <section class="sp-section">
+            <h2>Suggested Plans for {{ selectedMonthLabel }}</h2>
+            <div class="sp-list" id="sp-suggestions-list">
+                {% for suggestion in suggestedPlans %}
+                    <article class="sp-card suggestion-card" data-suggestion-id="{{ suggestion.id }}">
+                        <header class="sp-card-head">
+                            <h3>{{ suggestion.name }}</h3>
+                            <span class="badge">{{ suggestion.planType }}</span>
+                        </header>
+                        <p class="sp-meta">
+                            {{ suggestion.dateFrom }} - {{ suggestion.dateTo }}
+                            · weight {{ suggestion.weight }}
+                        </p>
+                        <div class="sp-inline-field">
+                            <label for="limit-{{ suggestion.id }}">Limit</label>
+                            <input
+                                id="limit-{{ suggestion.id }}"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value="{{ suggestion.limitAmount }}"
+                                data-suggestion-limit
+                            >
+                            <select data-suggestion-currency>
+                                {% for code in availableCurrencies %}
+                                    <option value="{{ code }}" {{ code == suggestion.currency ? 'selected' : '' }}>
+                                        {{ code }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="sp-inline-field">
+                            <label for="weight-{{ suggestion.id }}">Weight</label>
+                            <input
+                                id="weight-{{ suggestion.id }}"
+                                type="number"
+                                step="1"
+                                min="0"
+                                value="{{ suggestion.weight }}"
+                                data-suggestion-weight
+                            >
+                            <span>priority</span>
+                        </div>
+                        <div class="sp-inline-field">
+                            <label for="note-{{ suggestion.id }}">Comment</label>
+                            <input
+                                id="note-{{ suggestion.id }}"
+                                type="text"
+                                value="{{ suggestion.note ?? '' }}"
+                                data-suggestion-note
+                            >
+                            <span>optional</span>
+                        </div>
+                        <div class="sp-icons">
+                            <button
+                                type="button"
+                                class="icon-btn approve"
+                                title="Approve"
+                                data-suggestion-approve
+                            >
+                                ✓
+                            </button>
+                            <button
+                                type="button"
+                                class="icon-btn delete"
+                                title="Delete"
+                                data-suggestion-delete
+                            >
+                                🗑
+                            </button>
+                        </div>
+                    </article>
+                {% else %}
+                    <div class="empty" id="sp-no-suggestions">
+                        <strong>No suggestions for this month</strong>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="sp-section">
+            <h2>Existing Plans for {{ selectedMonthLabel }}</h2>
+            <div class="sp-list" id="sp-existing-list">
+                {% for plan in existingPlans %}
+                    {% include 'admin/spending_plans/_existing_card.html.twig' with {plan: plan} %}
+                {% else %}
+                    <div class="empty" id="sp-no-existing">
+                        <strong>No existing plans for this month</strong>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+    </main>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        window.spendingPlansPage = {
+            month: {{ selectedMonthKey|json_encode|raw }},
+            approveUrlTemplate: {{ path(
+                'admin_spending_plans_suggestion_approve',
+                {month: 'MONTH', suggestionId: 'ID'}
+            )|json_encode|raw }},
+            deleteUrlTemplate: {{ path(
+                'admin_spending_plans_suggestion_delete',
+                {month: 'MONTH', suggestionId: 'ID'}
+            )|json_encode|raw }},
+            csrfToken: {{ csrf_token('sp_suggestion_action')|json_encode|raw }}
+        };
+    </script>
+    <script src="{{ asset('js/spending-plans.js') }}"></script>
+{% endblock %}

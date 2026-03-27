@@ -23,6 +23,14 @@
                     <a class="btn" href="{{ path('admin_telegram_pending') }}">Review requests</a>
                 </div>
             </article>
+            <article class="metric reveal delay">
+                <h3>Spending Plans</h3>
+                <p>System plans for {{ nextMonthLabel }}: <strong>{{ nextMonthSystemSpendingPlansCount }}</strong></p>
+                <div class="actions">
+                    <a class="btn" href="{{ path('admin_spending_plans_index') }}">Manage plans</a>
+                </div>
+            </article>
         </section>
+
     </main>
 {% endblock %}

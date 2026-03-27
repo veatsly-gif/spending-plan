@@ -6,28 +6,61 @@
     <main class="panel reveal">
         <span class="kicker">Overview</span>
         <h1>Home Accounting Dashboard</h1>
-        <p>Starter stub for balances, monthly operations, and exchange monitoring.</p>
+        <p>Income tracking, monthly snapshots, and exchange monitoring.</p>
 
         <section class="grid metrics">
             <article class="metric reveal delay">
-                <h3>Balances</h3>
-                <p>EUR: 0.00</p>
-                <p>USDT: 0.00</p>
-                <p>GEL: 0.00</p>
+                <h3>Last Income</h3>
+                {% if incomeWidget.lastIncome %}
+                    <p>
+                        {{ incomeWidget.lastIncome.amount }} {{ incomeWidget.lastIncome.currencyCode }}
+                        {% if incomeWidget.lastIncome.amountInGel %}
+                            ({{ incomeWidget.lastIncome.amountInGel }} GEL)
+                        {% endif %}
+                    </p>
+                    <p class="subtle">{{ incomeWidget.lastIncome.createdAtLabel }}</p>
+                    {% if incomeWidget.lastIncome.comment %}
+                        <p class="subtle">{{ incomeWidget.lastIncome.comment }}</p>
+                    {% endif %}
+                {% else %}
+                    <p>No incomes yet.</p>
+                {% endif %}
             </article>
+
             <article class="metric reveal delay">
-                <h3>Income (Month)</h3>
-                <p>0 records</p>
+                <h3>Income ({{ incomeWidget.monthLabel }})</h3>
+                <p>{{ incomeWidget.monthIncomeCount }} records</p>
+                <p>Total converted: {{ incomeWidget.monthIncomeAmountGel }} GEL</p>
+                <div class="actions" style="margin-top: 8px;">
+                    <a class="btn btn-ghost" href="{{ path('app_dashboard_incomes') }}">
+                        Open incomes
+                    </a>
+                </div>
             </article>
-            <article class="metric reveal delay">
-                <h3>Spendings (Month)</h3>
-                <p>0 records</p>
-            </article>
+
             <article class="metric reveal delay">
                 <h3>FX Snapshot</h3>
-                <p>EUR/GEL: n/a</p>
-                <p>USDT/GEL: n/a</p>
+                <p>EUR/GEL: {{ incomeWidget.eurGelRate ?? 'n/a' }}</p>
+                <p>USDT/GEL: {{ incomeWidget.usdtGelRate ?? 'n/a' }}</p>
+                <p class="subtle">Updated: {{ incomeWidget.ratesUpdatedAtLabel ?? 'n/a' }}</p>
             </article>
         </section>
     </main>
+
+    {% if isIncomer and incomeForm is defined %}
+        <section class="panel reveal delay" style="margin-top: 16px;">
+            <span class="kicker">Income</span>
+            <h2>Add Income</h2>
+            {{ form_start(incomeForm) }}
+                {{ form_row(incomeForm.amount) }}
+                {{ form_row(incomeForm.currency) }}
+                {{ form_row(incomeForm.comment) }}
+                {{ form_row(incomeForm.convertToGel) }}
+                <div class="actions">
+                    <button type="submit">Add income</button>
+                </div>
+            {{ form_end(incomeForm) }}
+        </section>
+    {% endif %}
+
 {% endblock %}

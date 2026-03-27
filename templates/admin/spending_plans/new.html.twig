@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Create Spending Plan{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
+        <span class="kicker">Planning</span>
+        <h1>Create Spending Plan</h1>
+        {{ form_start(form) }}
+            {{ form_row(form.name) }}
+            {{ form_row(form.planType) }}
+            {{ form_row(form.dateFrom) }}
+            {{ form_row(form.dateTo) }}
+            {{ form_row(form.limitAmount) }}
+            {{ form_row(form.currency) }}
+            {{ form_row(form.weight) }}
+            {{ form_row(form.isSystem) }}
+            {{ form_row(form.note) }}
+            <div class="actions">
+                <button type="submit">Create</button>
+                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">Back</a>
+            </div>
+        {{ form_end(form) }}
+    </main>
+{% endblock %}

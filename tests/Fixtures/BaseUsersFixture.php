@@ -15,6 +15,8 @@ final class BaseUsersFixture implements DatabaseFixtureInterface
     public const ADMIN_PASSWORD = 'admin';
     public const TEST_USERNAME = 'test';
     public const TEST_PASSWORD = 'temp';
+    public const INCOMER_USERNAME = 'incomer';
+    public const INCOMER_PASSWORD = 'income';
 
     public function load(EntityManagerInterface $entityManager, ContainerInterface $container): void
     {
@@ -32,8 +34,14 @@ final class BaseUsersFixture implements DatabaseFixtureInterface
             ->setPassword('temp');
         $user->setPassword($passwordHasher->hashPassword($user, self::TEST_PASSWORD));
 
+        $incomer = (new User())
+            ->setUsername(self::INCOMER_USERNAME)
+            ->setRoles(['ROLE_INCOMER'])
+            ->setPassword('temp');
+        $incomer->setPassword($passwordHasher->hashPassword($incomer, self::INCOMER_PASSWORD));
+
         $entityManager->persist($admin);
         $entityManager->persist($user);
+        $entityManager->persist($incomer);
     }
 }
-

@@ -230,12 +230,18 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 10px 11px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fbfdfb;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
 }
 
 ul {
@@ -257,6 +263,209 @@ ul {
 .subtle {
   font-size: 0.93rem;
   color: var(--muted);
+}
+
+.sp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.sp-tab {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-tab.is-active {
+  border-color: var(--accent);
+  background: #d8ece7;
+}
+
+.sp-tab.is-alert {
+  border-color: #d08c1d;
+  background: #fff6e8;
+}
+
+.sp-tab .dot {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: #d08c1d;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.sp-section {
+  margin-top: 18px;
+}
+
+.sp-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sp-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sp-card.is-approving {
+  opacity: 0;
+  transform: translateX(88px);
+  transition: opacity 0.36s ease, transform 0.36s ease;
+}
+
+.sp-card.is-deleting {
+  opacity: 0;
+  transform: none;
+  transition: opacity 0.22s ease;
+}
+
+.sp-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.badge {
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 4px 9px;
+}
+
+.sp-meta {
+  font-size: 0.9rem;
+}
+
+.sp-limit {
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  font-size: 1.08rem;
+  color: var(--text);
+}
+
+.sp-inline-field {
+  display: grid;
+  grid-template-columns: auto minmax(130px, 180px) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.sp-inline-field label {
+  margin: 0;
+}
+
+.sp-inline-field input {
+  margin: 0;
+}
+
+.sp-icons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.icon-btn.approve {
+  border-color: #2f8b5b;
+  color: #2f8b5b;
+}
+
+.icon-btn.delete {
+  border-color: #8c3838;
+  color: #8c3838;
+}
+
+.sp-popup {
+  position: fixed;
+  top: 76px;
+  right: 18px;
+  max-width: 360px;
+  z-index: 90;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  animation: sp-slide-in 0.22s ease;
+}
+
+.sp-popup.is-hidden {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: all 0.2s ease;
+}
+
+.sp-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 0;
+}
+
+.sp-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 95;
+  border-radius: 10px;
+  background: #193a32;
+  color: #fff;
+  padding: 9px 12px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sp-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes sp-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .reveal {

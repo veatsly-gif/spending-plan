@@ -1,0 +1,111 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional\Web;
+
+use App\Entity\Income;
+use App\Service\RedisStore;
+use App\Tests\Fixtures\BaseCurrenciesFixture;
+use App\Tests\Fixtures\BaseIncomesFixture;
+use App\Tests\Fixtures\BaseUsersFixture;
+use App\Tests\Functional\DatabaseWebTestCase;
+
+final class DashboardIncomeControllerTest extends DatabaseWebTestCase
+{
+    /**
+     * @return list<class-string<\App\Tests\Fixtures\DatabaseFixtureInterface>>
+     */
+    protected function getFixturesForTest(string $testName): array
+    {
+        return match ($testName) {
+            'testDashboardShowsIncomeWidgetFromStoredRecords' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
+            'testIncomesPageShowsIncomeList' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
+            default => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+            ],
+        };
+    }
+
+    public function testIncomerCanAddIncomeWithConversion(): void
+    {
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $redisStore->set('income:rates:live', (string) json_encode([
+            'eurGel' => '2.500000',
+            'usdtGel' => '2.700000',
+            'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+        ], JSON_THROW_ON_ERROR));
+
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(
+            0,
+            $crawler->filter('form[name="dashboard_income"]')->count()
+        );
+
+        $eurOption = $crawler->filterXPath(
+            '//select[@name="dashboard_income[currency]"]'
+            .'/option[contains(normalize-space(.), "EUR")]'
+        )->first();
+        self::assertSame(1, $eurOption->count());
+        $eurValue = (string) $eurOption->attr('value');
+
+        $form = $crawler->selectButton('Add income')->form([
+            'dashboard_income[amount]' => '10',
+            'dashboard_income[currency]' => $eurValue,
+            'dashboard_income[comment]' => 'Salary',
+            'dashboard_income[convertToGel]' => 1,
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseRedirects('/dashboard');
+
+        $this->entityManager->clear();
+        $income = $this->entityManager->getRepository(Income::class)->findOneBy([
+            'comment' => 'Salary',
+        ]);
+        self::assertInstanceOf(Income::class, $income);
+        self::assertSame('10.00', $income->getAmount());
+        self::assertSame('EUR', $income->getCurrency()?->getCode());
+        self::assertSame('25.00', $income->getAmountInGel());
+        self::assertSame('2.5000', $income->getRate());
+    }
+
+    public function testRegularUserCannotSeeIncomeCreateForm(): void
+    {
+        $this->loginAs(BaseUsersFixture::TEST_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertSame(0, $crawler->filter('form[name="dashboard_income"]')->count());
+    }
+
+    public function testDashboardShowsIncomeWidgetFromStoredRecords(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('2 records', $crawler->text(''));
+        self::assertGreaterThan(
+            0,
+            $crawler->filter('a[href="/dashboard/incomes"]')->count()
+        );
+    }
+
+    public function testIncomesPageShowsIncomeList(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Base EUR income', $crawler->text(''));
+    }
+}

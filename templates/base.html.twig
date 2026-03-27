@@ -13,6 +13,7 @@
         {% block javascripts %}{% endblock %}
     </head>
     <body>
+        {% set globalPopup = is_granted('ROLE_ADMIN') ? admin_popup() : {show: false, title: '', message: '', monthKey: ''} %}
         <header class="site-nav">
             <div class="nav-shell">
                 <a class="brand" href="{{ path('web_home') }}">Spending Plan</a>
@@ -44,5 +45,29 @@
             {% endfor %}
             {% block body %}{% endblock %}
         </section>
+
+        {% if globalPopup.show %}
+            <aside class="sp-popup" data-sp-popup>
+                <button type="button" class="sp-popup-close" data-sp-popup-close aria-label="Close">×</button>
+                <h3>{{ globalPopup.title }}</h3>
+                <p>{{ globalPopup.message }}</p>
+                <a class="btn" href="{{ path('admin_spending_plans_index', {month: globalPopup.monthKey}) }}">
+                    Open Spending Plans
+                </a>
+            </aside>
+            <script>
+                (() => {
+                    const popup = document.querySelector('[data-sp-popup]');
+                    if (!popup) {
+                        return;
+                    }
+                    const closeBtn = popup.querySelector('[data-sp-popup-close]');
+                    closeBtn?.addEventListener('click', () => {
+                        popup.classList.add('is-hidden');
+                        window.setTimeout(() => popup.remove(), 220);
+                    });
+                })();
+            </script>
+        {% endif %}
     </body>
 </html>

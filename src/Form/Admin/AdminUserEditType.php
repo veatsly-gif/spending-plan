@@ -21,6 +21,7 @@ final class AdminUserEditType extends AbstractType
                 'choices' => [
                     'Admin' => 'ROLE_ADMIN',
                     'User' => 'ROLE_USER',
+                    'Incomer' => 'ROLE_INCOMER',
                 ],
                 'multiple' => true,
                 'expanded' => false,

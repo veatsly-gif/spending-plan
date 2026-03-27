@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Incomes{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">Income</span>
+        <h1>Incomes for {{ monthLabel }}</h1>
+        <div class="actions" style="margin-top: 10px;">
+            <a class="btn btn-ghost" href="{{ path('app_dashboard') }}">Back to Dashboard</a>
+        </div>
+
+        {% if incomes is empty %}
+            <div class="empty" style="margin-top: 14px;">
+                <strong>No incomes for this month.</strong>
+            </div>
+        {% else %}
+            <div class="table-wrap" style="margin-top: 14px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Live GEL</th>
+                            <th>Official GEL</th>
+                            <th>Rate</th>
+                            <th>Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for income in incomes %}
+                            <tr>
+                                <td>{{ income.createdAtLabel }}</td>
+                                <td>{{ income.username }}</td>
+                                <td>{{ income.amount }} {{ income.currencyCode }}</td>
+                                <td>{{ income.amountInGel ?? 'n/a' }}</td>
+                                <td>{{ income.officialRatedAmountInGel ?? 'n/a' }}</td>
+                                <td>{{ income.rate ?? 'n/a' }}</td>
+                                <td>{{ income.comment ?? '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="grid metrics" style="margin-top: 14px;">
+                <article class="metric">
+                    <h3>Total Balance (Live GEL)</h3>
+                    <p>{{ totalAmountInGel }} GEL</p>
+                </article>
+                <article class="metric">
+                    <h3>Total For Taxation (Official GEL)</h3>
+                    <p>{{ totalOfficialRatedAmountInGel }} GEL</p>
+                </article>
+            </div>
+        {% endif %}
+    </main>
+{% endblock %}
