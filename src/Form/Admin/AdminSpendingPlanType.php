@@ -27,54 +27,58 @@ final class AdminSpendingPlanType extends AbstractType
     {
         $builder
             ->add('name', TextType::class, [
+                'label' => 'form.name',
                 'constraints' => [
                     new NotBlank(),
                     new Length(max: 255),
                 ],
             ])
             ->add('planType', ChoiceType::class, [
-                'label' => 'Plan type',
+                'label' => 'form.plan_type',
                 'choices' => [
-                    'Custom' => SpendingPlan::PLAN_TYPE_CUSTOM,
-                    'Weekday' => SpendingPlan::PLAN_TYPE_WEEKDAY,
-                    'Weekend' => SpendingPlan::PLAN_TYPE_WEEKEND,
-                    'Regular spends' => SpendingPlan::PLAN_TYPE_REGULAR,
-                    'Planned spends' => SpendingPlan::PLAN_TYPE_PLANNED,
+                    'form.plan_type_option.custom' => SpendingPlan::PLAN_TYPE_CUSTOM,
+                    'form.plan_type_option.weekday' => SpendingPlan::PLAN_TYPE_WEEKDAY,
+                    'form.plan_type_option.weekend' => SpendingPlan::PLAN_TYPE_WEEKEND,
+                    'form.plan_type_option.regular' => SpendingPlan::PLAN_TYPE_REGULAR,
+                    'form.plan_type_option.planned' => SpendingPlan::PLAN_TYPE_PLANNED,
                 ],
             ])
             ->add('dateFrom', DateType::class, [
-                'label' => 'Date from',
+                'label' => 'form.date_from',
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
             ])
             ->add('dateTo', DateType::class, [
-                'label' => 'Date to',
+                'label' => 'form.date_to',
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
             ])
             ->add('limitAmount', NumberType::class, [
-                'label' => 'Limit amount',
+                'label' => 'form.limit_amount',
                 'scale' => 2,
                 'constraints' => [
                     new Range(min: 0),
                 ],
             ])
             ->add('currency', EntityType::class, [
+                'label' => 'form.currency',
                 'class' => Currency::class,
                 'choice_label' => static function (Currency $currency): string {
                     return $currency->getCode();
                 },
             ])
             ->add('weight', IntegerType::class, [
+                'label' => 'form.weight',
                 'constraints' => [
                     new Range(min: 0, max: 100000),
                 ],
             ])
             ->add('isSystem', CheckboxType::class, [
-                'label' => 'System/default plan',
+                'label' => 'form.system_default_plan',
                 'required' => false,
             ])
             ->add('note', TextareaType::class, [
+                'label' => 'form.note',
                 'required' => false,
             ]);
     }

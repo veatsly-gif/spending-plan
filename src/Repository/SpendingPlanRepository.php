@@ -123,4 +123,34 @@ class SpendingPlanRepository extends ServiceEntityRepository
 
         return (int) $count;
     }
+
+    /**
+     * @return list<SpendingPlan>
+     */
+    public function findForDate(\DateTimeImmutable $date): array
+    {
+        return $this->createQueryBuilder('sp')
+            ->andWhere('sp.dateFrom <= :date')
+            ->andWhere('sp.dateTo >= :date')
+            ->setParameter('date', $date->setTime(0, 0))
+            ->orderBy('sp.weight', 'DESC')
+            ->addOrderBy('sp.dateFrom', 'ASC')
+            ->addOrderBy('sp.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findBestForDate(\DateTimeImmutable $date): ?SpendingPlan
+    {
+        return $this->createQueryBuilder('sp')
+            ->andWhere('sp.dateFrom <= :date')
+            ->andWhere('sp.dateTo >= :date')
+            ->setParameter('date', $date->setTime(0, 0))
+            ->orderBy('sp.weight', 'DESC')
+            ->addOrderBy('sp.dateFrom', 'ASC')
+            ->addOrderBy('sp.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

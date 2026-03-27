@@ -9,13 +9,15 @@ final readonly class DashboardPageViewDto
     public function __construct(
         public bool $isIncomer,
         public DashboardIncomeWidgetDto $incomeWidget,
+        public DashboardSpendWidgetDto $spendWidget,
     ) {
     }
 
     /**
      * @return array{
      *     isIncomer: bool,
-     *     incomeWidget: DashboardIncomeWidgetDto
+     *     incomeWidget: DashboardIncomeWidgetDto,
+     *     spendWidget: DashboardSpendWidgetDto
      * }
      */
     public function toArray(): array
@@ -23,6 +25,7 @@ final readonly class DashboardPageViewDto
         return [
             'isIncomer' => $this->isIncomer,
             'incomeWidget' => $this->incomeWidget,
+            'spendWidget' => $this->spendWidget,
         ];
     }
 }

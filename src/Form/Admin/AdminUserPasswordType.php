@@ -18,9 +18,9 @@ final class AdminUserPasswordType extends AbstractType
         $builder->add('plainPassword', RepeatedType::class, [
             'type' => PasswordType::class,
             'mapped' => false,
-            'invalid_message' => 'Passwords must match.',
-            'first_options' => ['label' => 'New password'],
-            'second_options' => ['label' => 'Repeat password'],
+            'invalid_message' => 'form.passwords_must_match',
+            'first_options' => ['label' => 'form.new_password'],
+            'second_options' => ['label' => 'form.repeat_password'],
             'constraints' => [
                 new NotBlank(),
                 new Length(min: 4),

@@ -1,13 +1,14 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Create User and Approve{% endblock %}
+{% block title %}{{ 'admin.telegram.create_title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal" style="max-width: 680px; margin-inline: auto;">
-        <span class="kicker">Telegram Approval</span>
-        <h1>Create Local User and Approve</h1>
+        <span class="kicker">{{ 'admin.telegram.approval_kicker'|trans }}</span>
+        <h1>{{ 'admin.telegram.create_heading'|trans }}</h1>
         <p>
-            Telegram: <strong>{{ telegramUser.firstName }} {{ telegramUser.lastName ?? '' }}</strong>
+            {{ 'admin.telegram.telegram_user'|trans }}: <strong>{{ telegramUser.firstName }} {{ telegramUser.lastName ?? '' }}</strong>
             ({{ telegramUser.telegramId }})
         </p>
 
@@ -15,8 +16,8 @@
             {{ form_row(createForm.username) }}
             {{ form_row(createForm.password) }}
             <div class="actions">
-                <button type="submit">Create and approve</button>
-                <a class="btn btn-ghost" href="{{ path('admin_telegram_pending') }}">Back</a>
+                <button type="submit">{{ 'admin.telegram.create_and_approve_button'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('admin_telegram_pending') }}">{{ 'common.back'|trans }}</a>
             </div>
         {{ form_end(createForm) }}
     </main>

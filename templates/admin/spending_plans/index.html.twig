@@ -1,18 +1,19 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Spending Plans{% endblock %}
+{% block title %}{{ 'admin.spending_plans.title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">Planning</span>
-        <h1>Spending Plans</h1>
-        <p>Use tabs by month. Approve or delete suggestions without reloading.</p>
+        <span class="kicker">{{ 'admin.spending_plans.kicker'|trans }}</span>
+        <h1>{{ 'admin.spending_plans.heading'|trans }}</h1>
+        <p>{{ 'admin.spending_plans.description'|trans }}</p>
 
         <div class="actions">
-            <a class="btn" href="{{ path('admin_spending_plans_new', {month: selectedMonthKey}) }}">Create plan</a>
+            <a class="btn" href="{{ path('admin_spending_plans_new', {month: selectedMonthKey}) }}">{{ 'admin.spending_plans.create_plan'|trans }}</a>
         </div>
 
-        <nav class="sp-tabs" aria-label="Spending plan months">
+        <nav class="sp-tabs" aria-label="{{ 'admin.spending_plans.month_tabs'|trans }}">
             {% for tab in monthTabs %}
                 <a
                     href="{{ path('admin_spending_plans_index', {month: tab.monthKey}) }}"
@@ -27,20 +28,20 @@
         </nav>
 
         <section class="sp-section">
-            <h2>Suggested Plans for {{ selectedMonthLabel }}</h2>
+            <h2>{{ 'admin.spending_plans.suggested_for_month'|trans({'%month%': selectedMonthLabel}) }}</h2>
             <div class="sp-list" id="sp-suggestions-list">
                 {% for suggestion in suggestedPlans %}
                     <article class="sp-card suggestion-card" data-suggestion-id="{{ suggestion.id }}">
                         <header class="sp-card-head">
                             <h3>{{ suggestion.name }}</h3>
-                            <span class="badge">{{ suggestion.planType }}</span>
+                            <span class="badge">{{ ('plan_type.' ~ suggestion.planType)|trans }}</span>
                         </header>
                         <p class="sp-meta">
                             {{ suggestion.dateFrom }} - {{ suggestion.dateTo }}
-                            · weight {{ suggestion.weight }}
+                            · {{ 'common.weight'|trans({'%value%': suggestion.weight}) }}
                         </p>
                         <div class="sp-inline-field">
-                            <label for="limit-{{ suggestion.id }}">Limit</label>
+                            <label for="limit-{{ suggestion.id }}">{{ 'common.limit'|trans }}</label>
                             <input
                                 id="limit-{{ suggestion.id }}"
                                 type="number"
@@ -58,7 +59,7 @@
                             </select>
                         </div>
                         <div class="sp-inline-field">
-                            <label for="weight-{{ suggestion.id }}">Weight</label>
+                            <label for="weight-{{ suggestion.id }}">{{ 'common.weight_label'|trans }}</label>
                             <input
                                 id="weight-{{ suggestion.id }}"
                                 type="number"
@@ -67,23 +68,23 @@
                                 value="{{ suggestion.weight }}"
                                 data-suggestion-weight
                             >
-                            <span>priority</span>
+                            <span>{{ 'common.priority'|trans }}</span>
                         </div>
                         <div class="sp-inline-field">
-                            <label for="note-{{ suggestion.id }}">Comment</label>
+                            <label for="note-{{ suggestion.id }}">{{ 'common.comment'|trans }}</label>
                             <input
                                 id="note-{{ suggestion.id }}"
                                 type="text"
                                 value="{{ suggestion.note ?? '' }}"
                                 data-suggestion-note
                             >
-                            <span>optional</span>
+                            <span>{{ 'common.optional'|trans }}</span>
                         </div>
                         <div class="sp-icons">
                             <button
                                 type="button"
                                 class="icon-btn approve"
-                                title="Approve"
+                                title="{{ 'common.approve'|trans }}"
                                 data-suggestion-approve
                             >
                                 ✓
@@ -91,7 +92,7 @@
                             <button
                                 type="button"
                                 class="icon-btn delete"
-                                title="Delete"
+                                title="{{ 'common.delete'|trans }}"
                                 data-suggestion-delete
                             >
                                 🗑
@@ -100,20 +101,20 @@
                     </article>
                 {% else %}
                     <div class="empty" id="sp-no-suggestions">
-                        <strong>No suggestions for this month</strong>
+                        <strong>{{ 'admin.spending_plans.no_suggestions'|trans }}</strong>
                     </div>
                 {% endfor %}
             </div>
         </section>
 
         <section class="sp-section">
-            <h2>Existing Plans for {{ selectedMonthLabel }}</h2>
+            <h2>{{ 'admin.spending_plans.existing_for_month'|trans({'%month%': selectedMonthLabel}) }}</h2>
             <div class="sp-list" id="sp-existing-list">
                 {% for plan in existingPlans %}
                     {% include 'admin/spending_plans/_existing_card.html.twig' with {plan: plan} %}
                 {% else %}
                     <div class="empty" id="sp-no-existing">
-                        <strong>No existing plans for this month</strong>
+                        <strong>{{ 'admin.spending_plans.no_existing'|trans }}</strong>
                     </div>
                 {% endfor %}
             </div>
@@ -135,7 +136,14 @@
                 'admin_spending_plans_suggestion_delete',
                 {month: 'MONTH', suggestionId: 'ID'}
             )|json_encode|raw }},
-            csrfToken: {{ csrf_token('sp_suggestion_action')|json_encode|raw }}
+            csrfToken: {{ csrf_token('sp_suggestion_action')|json_encode|raw }},
+            i18n: {
+                unableApprove: {{ 'admin.spending_plans.unable_approve'|trans|json_encode|raw }},
+                unableDelete: {{ 'admin.spending_plans.unable_delete'|trans|json_encode|raw }},
+                toastApproved: {{ 'admin.spending_plans.approved'|trans|json_encode|raw }},
+                toastDeleted: {{ 'admin.spending_plans.deleted'|trans|json_encode|raw }},
+                noSuggestions: {{ 'admin.spending_plans.no_suggestions'|trans|json_encode|raw }}
+            }
         };
     </script>
     <script src="{{ asset('js/spending-plans.js') }}"></script>

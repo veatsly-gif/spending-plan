@@ -1,16 +1,17 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}{{ 'dashboard.title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">Overview</span>
-        <h1>Home Accounting Dashboard</h1>
-        <p>Income tracking, monthly snapshots, and exchange monitoring.</p>
+        <span class="kicker">{{ 'dashboard.kicker'|trans }}</span>
+        <h1>{{ 'dashboard.heading'|trans }}</h1>
+        <p>{{ 'dashboard.description'|trans }}</p>
 
         <section class="grid metrics">
             <article class="metric reveal delay">
-                <h3>Last Income</h3>
+                <h3>{{ 'dashboard.last_income'|trans }}</h3>
                 {% if incomeWidget.lastIncome %}
                     <p>
                         {{ incomeWidget.lastIncome.amount }} {{ incomeWidget.lastIncome.currencyCode }}
@@ -23,44 +24,100 @@
                         <p class="subtle">{{ incomeWidget.lastIncome.comment }}</p>
                     {% endif %}
                 {% else %}
-                    <p>No incomes yet.</p>
+                    <p>{{ 'dashboard.no_incomes'|trans }}</p>
                 {% endif %}
             </article>
 
             <article class="metric reveal delay">
-                <h3>Income ({{ incomeWidget.monthLabel }})</h3>
-                <p>{{ incomeWidget.monthIncomeCount }} records</p>
-                <p>Total converted: {{ incomeWidget.monthIncomeAmountGel }} GEL</p>
+                <h3>{{ 'dashboard.income_for_month'|trans({'%month%': incomeWidget.monthLabel}) }}</h3>
+                <p>{{ 'dashboard.records'|trans({'%count%': incomeWidget.monthIncomeCount}) }}</p>
+                <p>{{ 'dashboard.total_converted'|trans({'%amount%': incomeWidget.monthIncomeAmountGel}) }}</p>
                 <div class="actions" style="margin-top: 8px;">
                     <a class="btn btn-ghost" href="{{ path('app_dashboard_incomes') }}">
-                        Open incomes
+                        {{ 'dashboard.open_incomes'|trans }}
+                    </a>
+                </div>
+            </article>
+
+            <article class="metric reveal delay spend-widget" data-spend-widget>
+                <h3>{{ 'dashboard.spends_for_month'|trans({'%month%': spendWidget.monthLabel}) }}</h3>
+                <p data-spend-widget-count>{{ 'dashboard.records'|trans({'%count%': spendWidget.monthSpendCount}) }}</p>
+                <p>{{ 'dashboard.total'|trans }}: <span data-spend-widget-total>{{ spendWidget.monthSpendAmountLabel }}</span></p>
+                <p class="subtle" data-spend-widget-last>
+                    {% if spendWidget.lastSpend %}
+                        {{ 'dashboard.last_spend_value'|trans({
+                            '%amount%': spendWidget.lastSpend.amount,
+                            '%currency%': spendWidget.lastSpend.currencyCode,
+                            '%date%': spendWidget.lastSpend.spendDateLabel
+                        }) }}
+                    {% else %}
+                        {{ 'dashboard.last_spend_na'|trans }}
+                    {% endif %}
+                </p>
+                <div class="actions" style="margin-top: 8px;">
+                    <a class="btn btn-ghost" href="{{ path('app_dashboard_spends') }}">
+                        {{ 'dashboard.open_spends'|trans }}
                     </a>
                 </div>
             </article>
 
             <article class="metric reveal delay">
-                <h3>FX Snapshot</h3>
-                <p>EUR/GEL: {{ incomeWidget.eurGelRate ?? 'n/a' }}</p>
-                <p>USDT/GEL: {{ incomeWidget.usdtGelRate ?? 'n/a' }}</p>
-                <p class="subtle">Updated: {{ incomeWidget.ratesUpdatedAtLabel ?? 'n/a' }}</p>
+                <h3>{{ 'dashboard.fx_snapshot'|trans }}</h3>
+                <p>{{ 'dashboard.eur_gel'|trans }}: {{ incomeWidget.eurGelRate ?? ('common.na'|trans) }}</p>
+                <p>{{ 'dashboard.usdt_gel'|trans }}: {{ incomeWidget.usdtGelRate ?? ('common.na'|trans) }}</p>
+                <p class="subtle">{{ 'dashboard.updated'|trans }}: {{ incomeWidget.ratesUpdatedAtLabel ?? ('common.na'|trans) }}</p>
             </article>
         </section>
     </main>
 
+    {% if spendForm is defined %}
+        <section class="panel reveal delay" style="margin-top: 16px;">
+            <span class="kicker">{{ 'dashboard.spend'|trans }}</span>
+            <h2>{{ 'dashboard.add_spend'|trans }}</h2>
+            <p class="form-status" data-spend-feedback hidden></p>
+            {{ form_start(spendForm, {'attr': {'data-spend-form': '1'}}) }}
+                {{ form_row(spendForm.amount) }}
+                {{ form_row(spendForm.currency) }}
+                {{ form_row(spendForm.spendingPlan) }}
+                {{ form_row(spendForm.spendDate) }}
+                {{ form_row(spendForm.comment) }}
+                <div class="actions">
+                    <button type="submit" data-spend-submit>{{ 'dashboard.add_spend_button'|trans }}</button>
+                </div>
+            {{ form_end(spendForm) }}
+        </section>
+    {% endif %}
+
     {% if isIncomer and incomeForm is defined %}
         <section class="panel reveal delay" style="margin-top: 16px;">
-            <span class="kicker">Income</span>
-            <h2>Add Income</h2>
+            <span class="kicker">{{ 'dashboard.income'|trans }}</span>
+            <h2>{{ 'dashboard.add_income'|trans }}</h2>
             {{ form_start(incomeForm) }}
                 {{ form_row(incomeForm.amount) }}
                 {{ form_row(incomeForm.currency) }}
                 {{ form_row(incomeForm.comment) }}
                 {{ form_row(incomeForm.convertToGel) }}
                 <div class="actions">
-                    <button type="submit">Add income</button>
+                    <button type="submit">{{ 'dashboard.add_income_button'|trans }}</button>
                 </div>
             {{ form_end(incomeForm) }}
         </section>
     {% endif %}
 
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        window.dashboardSpendFormI18n = {
+            saving: {{ 'spend.js.saving'|trans|json_encode|raw }},
+            unableAdd: {{ 'spend.js.unable_add'|trans|json_encode|raw }},
+            networkError: {{ 'spend.js.network_error'|trans|json_encode|raw }},
+            addSpend: {{ 'dashboard.add_spend_button'|trans|json_encode|raw }},
+            adding: {{ 'spend.js.adding'|trans|json_encode|raw }},
+            added: {{ 'spend.js.added'|trans|json_encode|raw }},
+            saved: {{ 'spend.js.saved'|trans|json_encode|raw }}
+        };
+    </script>
+    <script src="{{ asset('js/dashboard-spend-form.js') }}"></script>
 {% endblock %}

@@ -1,31 +1,32 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Incomes{% endblock %}
+{% block title %}{{ 'incomes.title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">Income</span>
-        <h1>Incomes for {{ monthLabel }}</h1>
+        <span class="kicker">{{ 'incomes.kicker'|trans }}</span>
+        <h1>{{ 'incomes.heading'|trans({'%month%': monthLabel}) }}</h1>
         <div class="actions" style="margin-top: 10px;">
-            <a class="btn btn-ghost" href="{{ path('app_dashboard') }}">Back to Dashboard</a>
+            <a class="btn btn-ghost" href="{{ path('app_dashboard') }}">{{ 'common.back_to_dashboard'|trans }}</a>
         </div>
 
         {% if incomes is empty %}
             <div class="empty" style="margin-top: 14px;">
-                <strong>No incomes for this month.</strong>
+                <strong>{{ 'incomes.empty'|trans }}</strong>
             </div>
         {% else %}
             <div class="table-wrap" style="margin-top: 14px;">
                 <table>
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>User</th>
-                            <th>Amount</th>
-                            <th>Live GEL</th>
-                            <th>Official GEL</th>
-                            <th>Rate</th>
-                            <th>Comment</th>
+                            <th>{{ 'common.date'|trans }}</th>
+                            <th>{{ 'common.user'|trans }}</th>
+                            <th>{{ 'common.amount'|trans }}</th>
+                            <th>{{ 'incomes.live_gel'|trans }}</th>
+                            <th>{{ 'incomes.official_gel'|trans }}</th>
+                            <th>{{ 'common.rate'|trans }}</th>
+                            <th>{{ 'common.comment'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -34,9 +35,9 @@
                                 <td>{{ income.createdAtLabel }}</td>
                                 <td>{{ income.username }}</td>
                                 <td>{{ income.amount }} {{ income.currencyCode }}</td>
-                                <td>{{ income.amountInGel ?? 'n/a' }}</td>
-                                <td>{{ income.officialRatedAmountInGel ?? 'n/a' }}</td>
-                                <td>{{ income.rate ?? 'n/a' }}</td>
+                                <td>{{ income.amountInGel ?? ('common.na'|trans) }}</td>
+                                <td>{{ income.officialRatedAmountInGel ?? ('common.na'|trans) }}</td>
+                                <td>{{ income.rate ?? ('common.na'|trans) }}</td>
                                 <td>{{ income.comment ?? '-' }}</td>
                             </tr>
                         {% endfor %}
@@ -45,12 +46,12 @@
             </div>
             <div class="grid metrics" style="margin-top: 14px;">
                 <article class="metric">
-                    <h3>Total Balance (Live GEL)</h3>
-                    <p>{{ totalAmountInGel }} GEL</p>
+                    <h3>{{ 'incomes.total_balance_live'|trans }}</h3>
+                    <p>{{ 'common.gel_amount'|trans({'%amount%': totalAmountInGel}) }}</p>
                 </article>
                 <article class="metric">
-                    <h3>Total For Taxation (Official GEL)</h3>
-                    <p>{{ totalOfficialRatedAmountInGel }} GEL</p>
+                    <h3>{{ 'incomes.total_taxation_official'|trans }}</h3>
+                    <p>{{ 'common.gel_amount'|trans({'%amount%': totalOfficialRatedAmountInGel}) }}</p>
                 </article>
             </div>
         {% endif %}

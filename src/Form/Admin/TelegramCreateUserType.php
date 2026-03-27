@@ -17,9 +17,11 @@ final class TelegramCreateUserType extends AbstractType
     {
         $builder
             ->add('username', TextType::class, [
+                'label' => 'form.username',
                 'constraints' => [new NotBlank(), new Length(min: 3)],
             ])
             ->add('password', PasswordType::class, [
+                'label' => 'form.password',
                 'constraints' => [new NotBlank(), new Length(min: 4)],
             ]);
     }

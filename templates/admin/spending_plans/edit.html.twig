@@ -1,11 +1,12 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Edit Spending Plan{% endblock %}
+{% block title %}{{ 'admin.spending_plans.edit_title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
-        <span class="kicker">Planning</span>
-        <h1>Edit {{ spendingPlan.name }}</h1>
+        <span class="kicker">{{ 'admin.spending_plans.kicker'|trans }}</span>
+        <h1>{{ 'admin.spending_plans.edit_heading'|trans({'%name%': spendingPlan.name}) }}</h1>
         {{ form_start(form) }}
             {{ form_row(form.name) }}
             {{ form_row(form.planType) }}
@@ -17,8 +18,8 @@
             {{ form_row(form.isSystem) }}
             {{ form_row(form.note) }}
             <div class="actions">
-                <button type="submit">Save</button>
-                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">Back</a>
+                <button type="submit">{{ 'common.save'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">{{ 'common.back'|trans }}</a>
             </div>
         {{ form_end(form) }}
     </main>

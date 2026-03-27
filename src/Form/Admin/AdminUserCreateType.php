@@ -20,12 +20,15 @@ final class AdminUserCreateType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('username', TextType::class)
+            ->add('username', TextType::class, [
+                'label' => 'form.username',
+            ])
             ->add('roles', ChoiceType::class, [
+                'label' => 'form.roles',
                 'choices' => [
-                    'Admin' => 'ROLE_ADMIN',
-                    'User' => 'ROLE_USER',
-                    'Incomer' => 'ROLE_INCOMER',
+                    'form.role.admin' => 'ROLE_ADMIN',
+                    'form.role.user' => 'ROLE_USER',
+                    'form.role.incomer' => 'ROLE_INCOMER',
                 ],
                 'multiple' => true,
                 'expanded' => false,
@@ -33,9 +36,9 @@ final class AdminUserCreateType extends AbstractType
             ->add('plainPassword', RepeatedType::class, [
                 'type' => PasswordType::class,
                 'mapped' => false,
-                'invalid_message' => 'Passwords must match.',
-                'first_options' => ['label' => 'Password'],
-                'second_options' => ['label' => 'Repeat password'],
+                'invalid_message' => 'form.passwords_must_match',
+                'first_options' => ['label' => 'form.password'],
+                'second_options' => ['label' => 'form.repeat_password'],
                 'constraints' => [
                     new NotBlank(),
                     new Length(min: 4),

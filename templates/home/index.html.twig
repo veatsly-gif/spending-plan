@@ -1,15 +1,16 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Spending Plan{% endblock %}
+{% block title %}{{ 'home.title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="hero reveal">
-        <span class="kicker">Personal Finance Core</span>
-        <h1>Home Accounting Workspace</h1>
-        <p>Track income in EUR and USDT, spend in GEL, and manage your monthly cashflow from web and Telegram bot integrations.</p>
+        <span class="kicker">{{ 'home.kicker'|trans }}</span>
+        <h1>{{ 'home.heading'|trans }}</h1>
+        <p>{{ 'home.description'|trans }}</p>
         <div class="actions">
-            <a class="btn" href="{{ path('app_login') }}">Open Login</a>
-            <a class="btn btn-ghost" href="{{ path('api_health') }}">API Health</a>
+            <a class="btn" href="{{ path('app_login') }}">{{ 'home.open_login'|trans }}</a>
+            <a class="btn btn-ghost" href="{{ path('api_health') }}">{{ 'home.api_health'|trans }}</a>
         </div>
     </main>
 {% endblock %}

@@ -1,33 +1,37 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Admin{% endblock %}
+{% block title %}{{ 'admin.dashboard.title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">Administration</span>
-        <h1>Control Center</h1>
-        <p>Manage users, Telegram approvals, and platform settings.</p>
+        <span class="kicker">{{ 'admin.dashboard.kicker'|trans }}</span>
+        <h1>{{ 'admin.dashboard.heading'|trans }}</h1>
+        <p>{{ 'admin.dashboard.description'|trans }}</p>
 
         <section class="grid metrics">
             <article class="metric reveal delay">
-                <h3>User Management</h3>
-                <p>Create and manage local users.</p>
+                <h3>{{ 'admin.dashboard.user_management'|trans }}</h3>
+                <p>{{ 'admin.dashboard.user_management_desc'|trans }}</p>
                 <div class="actions">
-                    <a class="btn" href="{{ path('admin_users_index') }}">Open users</a>
+                    <a class="btn" href="{{ path('admin_users_index') }}">{{ 'admin.dashboard.open_users'|trans }}</a>
                 </div>
             </article>
             <article class="metric reveal delay">
-                <h3>Telegram Approvals</h3>
-                <p>Pending requests: <strong>{{ pendingTelegramUsers }}</strong></p>
+                <h3>{{ 'admin.dashboard.telegram_approvals'|trans }}</h3>
+                <p>{{ 'admin.dashboard.pending_requests'|trans({'%count%': pendingTelegramUsers})|raw }}</p>
                 <div class="actions">
-                    <a class="btn" href="{{ path('admin_telegram_pending') }}">Review requests</a>
+                    <a class="btn" href="{{ path('admin_telegram_pending') }}">{{ 'admin.dashboard.review_requests'|trans }}</a>
                 </div>
             </article>
             <article class="metric reveal delay">
-                <h3>Spending Plans</h3>
-                <p>System plans for {{ nextMonthLabel }}: <strong>{{ nextMonthSystemSpendingPlansCount }}</strong></p>
+                <h3>{{ 'admin.dashboard.spending_plans'|trans }}</h3>
+                <p>{{ 'admin.dashboard.system_plans_for_month'|trans({
+                    '%month%': nextMonthLabel,
+                    '%count%': nextMonthSystemSpendingPlansCount
+                })|raw }}</p>
                 <div class="actions">
-                    <a class="btn" href="{{ path('admin_spending_plans_index') }}">Manage plans</a>
+                    <a class="btn" href="{{ path('admin_spending_plans_index') }}">{{ 'admin.dashboard.manage_plans'|trans }}</a>
                 </div>
             </article>
         </section>

@@ -1,23 +1,24 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Manage Users{% endblock %}
+{% block title %}{{ 'admin.users.index_title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">User Directory</span>
-        <h1>Users</h1>
+        <span class="kicker">{{ 'admin.users.kicker'|trans }}</span>
+        <h1>{{ 'admin.users.heading'|trans }}</h1>
         <div class="actions">
-            <a class="btn" href="{{ path('admin_users_new') }}">Create User</a>
+            <a class="btn" href="{{ path('admin_users_new') }}">{{ 'admin.users.create_user'|trans }}</a>
         </div>
 
         <section class="table-wrap reveal delay">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Roles</th>
-                        <th>Actions</th>
+                        <th>{{ 'common.id'|trans }}</th>
+                        <th>{{ 'common.username'|trans }}</th>
+                        <th>{{ 'common.roles'|trans }}</th>
+                        <th>{{ 'common.actions'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,11 +29,11 @@
                             <td>{{ user.roles|join(', ') }}</td>
                             <td>
                                 <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_users_edit', {id: user.id}) }}">Edit</a>
-                                    <a class="btn btn-ghost" href="{{ path('admin_users_password', {id: user.id}) }}">Password</a>
-                                    <form method="post" action="{{ path('admin_users_delete', {id: user.id}) }}" style="display:inline;" onsubmit="return confirm('Delete user {{ user.username }}?');">
+                                    <a class="btn btn-ghost" href="{{ path('admin_users_edit', {id: user.id}) }}">{{ 'common.edit'|trans }}</a>
+                                    <a class="btn btn-ghost" href="{{ path('admin_users_password', {id: user.id}) }}">{{ 'common.password'|trans }}</a>
+                                    <form method="post" action="{{ path('admin_users_delete', {id: user.id}) }}" style="display:inline;" onsubmit="return confirm('{{ 'admin.users.confirm_delete'|trans({'%username%': user.username})|e('js') }}');">
                                         <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
-                                        <button type="submit" class="btn-danger">Delete</button>
+                                        <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
                                     </form>
                                 </div>
                             </td>
@@ -41,7 +42,7 @@
                         <tr>
                             <td colspan="4">
                                 <div class="empty">
-                                    <strong>No users found</strong>
+                                    <strong>{{ 'admin.users.no_users'|trans }}</strong>
                                 </div>
                             </td>
                         </tr>

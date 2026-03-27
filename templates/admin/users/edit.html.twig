@@ -1,17 +1,18 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Edit User{% endblock %}
+{% block title %}{{ 'admin.users.edit_title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal" style="max-width: 620px; margin-inline: auto;">
-        <span class="kicker">User Management</span>
-        <h1>Edit {{ userEntity.username }}</h1>
+        <span class="kicker">{{ 'admin.users.management_kicker'|trans }}</span>
+        <h1>{{ 'admin.users.edit_heading'|trans({'%username%': userEntity.username}) }}</h1>
         {{ form_start(form) }}
             {{ form_row(form.username) }}
             {{ form_row(form.roles) }}
             <div class="actions">
-                <button type="submit">Save</button>
-                <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">Back</a>
+                <button type="submit">{{ 'common.save'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">{{ 'common.back'|trans }}</a>
             </div>
         {{ form_end(form) }}
     </main>

@@ -9,6 +9,13 @@
     }
 
     const cfg = window.spendingPlansPage;
+    const i18n = {
+      unableApprove: cfg?.i18n?.unableApprove || "Unable to approve suggestion.",
+      unableDelete: cfg?.i18n?.unableDelete || "Unable to delete suggestion.",
+      toastApproved: cfg?.i18n?.toastApproved || "Approved",
+      toastDeleted: cfg?.i18n?.toastDeleted || "Deleted",
+      noSuggestions: cfg?.i18n?.noSuggestions || "No suggestions for this month",
+    };
     const suggestionList = document.getElementById("sp-suggestions-list");
     const existingList = document.getElementById("sp-existing-list");
     if (!suggestionList || !existingList) {
@@ -86,7 +93,7 @@
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        window.alert(data.error || "Unable to approve suggestion.");
+        window.alert(data.error || i18n.unableApprove);
         return;
       }
 
@@ -99,7 +106,7 @@
       const noExisting = document.getElementById("sp-no-existing");
       noExisting?.remove();
       existingList.insertAdjacentHTML("beforeend", data.existingHtml);
-      showToast("Approved");
+      showToast(i18n.toastApproved);
     }
 
     async function removeSuggestion(card) {
@@ -125,7 +132,7 @@
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        window.alert(data.error || "Unable to delete suggestion.");
+        window.alert(data.error || i18n.unableDelete);
         return;
       }
 
@@ -134,7 +141,7 @@
         card.remove();
         ensureSuggestionPlaceholder();
       }, DELETE_REMOVE_DELAY_MS);
-      showToast("Deleted");
+      showToast(i18n.toastDeleted);
     }
 
     function ensureSuggestionPlaceholder() {
@@ -148,7 +155,7 @@
 
       suggestionList.insertAdjacentHTML(
         "beforeend",
-        '<div class="empty" id="sp-no-suggestions"><strong>No suggestions for this month</strong></div>'
+        `<div class="empty" id="sp-no-suggestions"><strong>${escapeHtml(i18n.noSuggestions)}</strong></div>`
       );
     }
 
@@ -166,6 +173,15 @@
         toast.classList.remove("is-visible");
         window.setTimeout(() => toast.remove(), 220);
       }, TOAST_HIDE_DELAY_MS);
+    }
+
+    function escapeHtml(input) {
+      return String(input)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#039;");
     }
   }
 

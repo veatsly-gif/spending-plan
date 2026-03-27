@@ -1,21 +1,23 @@
+{% trans_default_domain 'messages' %}
+
 <article class="sp-card existing-card" data-existing-plan-id="{{ plan.id }}">
     <header class="sp-card-head">
         <h3>{{ plan.name }}</h3>
-        <span class="badge">{{ plan.planType }}</span>
+        <span class="badge">{{ ('plan_type.' ~ plan.planType)|trans }}</span>
     </header>
     <p class="sp-meta">
         {{ plan.dateFrom|date('Y-m-d') }} - {{ plan.dateTo|date('Y-m-d') }}
-        · weight {{ plan.weight }}
+        · {{ 'common.weight'|trans({'%value%': plan.weight}) }}
     </p>
     <p class="sp-limit">{{ plan.limitAmount }} {{ plan.currency.code }}</p>
     {% if plan.note %}
         <p>{{ plan.note }}</p>
     {% endif %}
     <div class="actions">
-        <a class="btn btn-ghost" href="{{ path('admin_spending_plans_edit', {id: plan.id}) }}">Edit</a>
-        <form method="post" action="{{ path('admin_spending_plans_delete', {id: plan.id}) }}" onsubmit="return confirm('Delete spending plan {{ plan.name }}?');">
+        <a class="btn btn-ghost" href="{{ path('admin_spending_plans_edit', {id: plan.id}) }}">{{ 'common.edit'|trans }}</a>
+        <form method="post" action="{{ path('admin_spending_plans_delete', {id: plan.id}) }}" onsubmit="return confirm('{{ 'admin.spending_plans.confirm_delete'|trans({'%name%': plan.name})|e('js') }}');">
             <input type="hidden" name="_token" value="{{ csrf_token('delete_spending_plan_' ~ plan.id) }}">
-            <button type="submit" class="btn-danger">Delete</button>
+            <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
         </form>
     </div>
 </article>

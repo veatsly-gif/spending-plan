@@ -8,19 +8,43 @@ use App\DTO\Controller\Web\DashboardIncomeDraftDto;
 use App\DTO\Controller\Web\DashboardIncomeItemDto;
 use App\DTO\Controller\Web\DashboardIncomeListPageDto;
 use App\DTO\Controller\Web\DashboardIncomeWidgetDto;
+use App\DTO\Controller\Web\DashboardMonthTabDto;
 use App\DTO\Controller\Web\DashboardPageViewDto;
+use App\DTO\Controller\Web\DashboardSpendDraftDto;
+use App\DTO\Controller\Web\DashboardSpendItemDto;
+use App\DTO\Controller\Web\DashboardSpendListPageDto;
+use App\DTO\Controller\Web\DashboardSpendWidgetDto;
 use App\DTO\Controller\Web\IncomeCreateResultDto;
+use App\DTO\Controller\Web\SpendCreateResultDto;
 use App\Entity\Income;
+use App\Entity\Spend;
+use App\Entity\SpendingPlan;
 use App\Entity\User;
 use App\Repository\CurrencyRepository;
 use App\Repository\IncomeRepository;
+use App\Repository\SpendRepository;
+use App\Repository\SpendingPlanRepository;
 use App\Service\Income\IncomeRateService;
 
 final class DashboardControllerService
 {
+    private const SORT_SPEND_DATE = 'spendDate';
+    private const SORT_CREATED_AT = 'createdAt';
+    private const SORT_AMOUNT = 'amount';
+    private const SORT_CURRENCY = 'currency';
+    private const SORT_USERNAME = 'username';
+    private const SORT_SPENDING_PLAN = 'spendingPlan';
+
+    /**
+     * @var list<int>
+     */
+    private const PER_PAGE_OPTIONS = [10, 25, 50];
+
     public function __construct(
         private readonly CurrencyRepository $currencyRepository,
         private readonly IncomeRepository $incomeRepository,
+        private readonly SpendRepository $spendRepository,
+        private readonly SpendingPlanRepository $spendingPlanRepository,
         private readonly IncomeRateService $incomeRateService,
     ) {
     }
@@ -40,6 +64,21 @@ final class DashboardControllerService
             }
         }
 
+        $monthSpends = $this->spendRepository->findForMonth($monthStart);
+        $lastSpend = $this->spendRepository->findLast();
+        $monthSpendTotals = [];
+        foreach ($monthSpends as $spend) {
+            $currencyCode = (string) $spend->getCurrency()?->getCode();
+            if ('' === $currencyCode) {
+                continue;
+            }
+
+            if (!isset($monthSpendTotals[$currencyCode])) {
+                $monthSpendTotals[$currencyCode] = 0.0;
+            }
+            $monthSpendTotals[$currencyCode] += (float) $spend->getAmount();
+        }
+
         return new DashboardPageViewDto(
             $isIncomer,
             new DashboardIncomeWidgetDto(
@@ -50,6 +89,12 @@ final class DashboardControllerService
                 $rates?->eurGel,
                 $rates?->usdtGel,
                 null !== $rates ? $rates->updatedAt->format('Y-m-d H:i') : null,
+            ),
+            new DashboardSpendWidgetDto(
+                null !== $lastSpend ? $this->mapSpend($lastSpend) : null,
+                $monthStart->format('F Y'),
+                count($monthSpends),
+                $this->formatCurrencyTotals($monthSpendTotals),
             )
         );
     }
@@ -80,12 +125,169 @@ final class DashboardControllerService
         );
     }
 
+    public function buildSpendListViewData(array $query, \DateTimeImmutable $now): DashboardSpendListPageDto
+    {
+        $monthKey = $this->sanitizeMonthKey(isset($query['month']) ? (string) $query['month'] : null)
+            ?? $now->format('Y-m');
+        $monthStart = $this->monthStart($monthKey);
+
+        $spends = $this->spendRepository->findForMonth($monthStart);
+        $monthEnd = $monthStart->modify('last day of this month')->setTime(0, 0);
+        $monthPlans = $this->spendingPlanRepository->findForMonth($monthStart, $monthEnd);
+
+        $availableCurrencies = $this->extractAvailableCurrencies($spends);
+        if ([] === $availableCurrencies) {
+            foreach ($this->currencyRepository->findBy([], ['code' => 'ASC']) as $currency) {
+                $availableCurrencies[] = $currency->getCode();
+            }
+        }
+
+        $availableUsers = $this->extractAvailableUsers($spends);
+        $availablePlans = $this->extractAvailablePlans($monthPlans);
+
+        $filterCurrency = $this->sanitizeOptionalText($query['currency'] ?? null);
+        $filterUser = $this->sanitizeOptionalText($query['user'] ?? null);
+        $filterPlanId = $this->sanitizeOptionalText($query['plan'] ?? null);
+        $filterQuery = $this->sanitizeOptionalText($query['q'] ?? null);
+
+        $filtered = [];
+        foreach ($spends as $spend) {
+            if ('' !== $filterCurrency && $filterCurrency !== (string) $spend->getCurrency()?->getCode()) {
+                continue;
+            }
+
+            if ('' !== $filterUser && $filterUser !== (string) $spend->getUserAdded()?->getUsername()) {
+                continue;
+            }
+
+            if ('' !== $filterPlanId && $filterPlanId !== (string) $spend->getSpendingPlan()?->getId()) {
+                continue;
+            }
+
+            if ('' !== $filterQuery) {
+                $needle = mb_strtolower($filterQuery);
+                $comment = mb_strtolower((string) $spend->getComment());
+                $username = mb_strtolower((string) $spend->getUserAdded()?->getUsername());
+                $planName = mb_strtolower((string) $spend->getSpendingPlan()?->getName());
+
+                if (!str_contains($comment, $needle) && !str_contains($username, $needle) && !str_contains($planName, $needle)) {
+                    continue;
+                }
+            }
+
+            $filtered[] = $spend;
+        }
+
+        $sort = $this->sanitizeSort(isset($query['sort']) ? (string) $query['sort'] : null);
+        $dir = $this->sanitizeDirection(isset($query['dir']) ? (string) $query['dir'] : null);
+        usort($filtered, function (Spend $left, Spend $right) use ($sort, $dir): int {
+            $comparison = $this->compareSpend($left, $right, $sort);
+            if ('desc' === $dir) {
+                $comparison *= -1;
+            }
+
+            if (0 !== $comparison) {
+                return $comparison;
+            }
+
+            return ((int) $left->getId()) <=> ((int) $right->getId());
+        });
+
+        $totalsByCurrency = [];
+        foreach ($filtered as $spend) {
+            $currencyCode = (string) $spend->getCurrency()?->getCode();
+            if ('' === $currencyCode) {
+                continue;
+            }
+
+            if (!isset($totalsByCurrency[$currencyCode])) {
+                $totalsByCurrency[$currencyCode] = 0.0;
+            }
+            $totalsByCurrency[$currencyCode] += (float) $spend->getAmount();
+        }
+
+        $totalRecords = count($filtered);
+        $perPage = $this->sanitizePerPage($query['perPage'] ?? null);
+        $totalPages = max(1, (int) ceil($totalRecords / $perPage));
+        $page = $this->sanitizePage($query['page'] ?? null, $totalPages);
+
+        $offset = ($page - 1) * $perPage;
+        $pageItems = array_slice($filtered, $offset, $perPage);
+
+        $items = [];
+        foreach ($pageItems as $spend) {
+            $items[] = $this->mapSpend($spend);
+        }
+
+        $monthTabs = $this->buildSpendMonthTabs($monthStart, $monthKey, $now);
+
+        return new DashboardSpendListPageDto(
+            $monthStart->format('F Y'),
+            $monthKey,
+            $monthStart->modify('first day of previous month')->format('Y-m'),
+            $monthStart->modify('first day of next month')->format('Y-m'),
+            $monthTabs,
+            $items,
+            $totalRecords,
+            $this->formatCurrencyTotals($totalsByCurrency),
+            $sort,
+            $dir,
+            $page,
+            $perPage,
+            $totalPages,
+            $filterCurrency,
+            $filterUser,
+            $filterPlanId,
+            $filterQuery,
+            $availableCurrencies,
+            $availableUsers,
+            $availablePlans,
+            self::PER_PAGE_OPTIONS,
+        );
+    }
+
+    /**
+     * @return array{monthKey: string, latestId: int, total: int}
+     */
+    public function buildSpendListVersionData(?string $monthKey, \DateTimeImmutable $now): array
+    {
+        $resolvedMonthKey = $this->sanitizeMonthKey($monthKey) ?? $now->format('Y-m');
+        $monthStart = $this->monthStart($resolvedMonthKey);
+        $version = $this->spendRepository->findMonthVersion($monthStart);
+
+        return [
+            'monthKey' => $resolvedMonthKey,
+            'latestId' => $version['latestId'],
+            'total' => $version['total'],
+        ];
+    }
+
     public function createIncomeDraft(): DashboardIncomeDraftDto
     {
         $draft = new DashboardIncomeDraftDto();
         $draft->setCurrency($this->currencyRepository->findOneByCode('GEL'));
 
         return $draft;
+    }
+
+    public function createSpendDraft(\DateTimeImmutable $now): DashboardSpendDraftDto
+    {
+        $draft = new DashboardSpendDraftDto();
+        $draft->setCurrency($this->currencyRepository->findOneByCode('GEL'));
+
+        $spendDate = $now->setTime(0, 0);
+        $draft->setSpendDate($spendDate);
+        $draft->setSpendingPlan($this->spendingPlanRepository->findBestForDate($spendDate));
+
+        return $draft;
+    }
+
+    /**
+     * @return list<SpendingPlan>
+     */
+    public function getSpendPlanChoicesForDate(\DateTimeImmutable $date): array
+    {
+        return $this->spendingPlanRepository->findForDate($date);
     }
 
     public function createIncome(User $user, DashboardIncomeDraftDto $draft): IncomeCreateResultDto
@@ -139,6 +341,41 @@ final class DashboardControllerService
         return new IncomeCreateResultDto(true);
     }
 
+    public function createSpend(User $user, DashboardSpendDraftDto $draft): SpendCreateResultDto
+    {
+        $amount = $draft->getAmount();
+        if (!is_numeric($amount) || (float) $amount < 0) {
+            return new SpendCreateResultDto(false, 'Amount must be a positive number.');
+        }
+
+        $currency = $draft->getCurrency();
+        if (null === $currency) {
+            return new SpendCreateResultDto(false, 'Currency is required.');
+        }
+
+        $spendingPlan = $draft->getSpendingPlan();
+        if (null === $spendingPlan) {
+            return new SpendCreateResultDto(false, 'Spending plan is required.');
+        }
+
+        $spendDate = $draft->getSpendDate()->setTime(0, 0);
+        if ($spendDate < $spendingPlan->getDateFrom() || $spendDate > $spendingPlan->getDateTo()) {
+            return new SpendCreateResultDto(false, 'Spend date must be inside selected spending plan period.');
+        }
+
+        $spend = (new Spend())
+            ->setUserAdded($user)
+            ->setAmount(number_format((float) $amount, 2, '.', ''))
+            ->setCurrency($currency)
+            ->setSpendingPlan($spendingPlan)
+            ->setSpendDate($spendDate)
+            ->setComment($draft->getComment());
+
+        $this->spendRepository->save($spend, true);
+
+        return new SpendCreateResultDto(true);
+    }
+
     private function hasRole(User $user, string $role): bool
     {
         return in_array($role, $user->getRoles(), true);
@@ -157,5 +394,245 @@ final class DashboardControllerService
             $income->getComment(),
             $income->getCreatedAt()->format('Y-m-d H:i')
         );
+    }
+
+    private function mapSpend(Spend $spend): DashboardSpendItemDto
+    {
+        return new DashboardSpendItemDto(
+            (int) $spend->getId(),
+            (string) $spend->getUserAdded()?->getUsername(),
+            $spend->getAmount(),
+            (string) $spend->getCurrency()?->getCode(),
+            (string) $spend->getSpendingPlan()?->getName(),
+            $spend->getSpendDate()->format('Y-m-d'),
+            $spend->getComment(),
+            $spend->getCreatedAt()->format('Y-m-d H:i')
+        );
+    }
+
+    /**
+     * @param array<string, float> $totalsByCurrency
+     */
+    private function formatCurrencyTotals(array $totalsByCurrency): string
+    {
+        if ([] === $totalsByCurrency) {
+            return '0.00';
+        }
+
+        ksort($totalsByCurrency);
+        $parts = [];
+        foreach ($totalsByCurrency as $currency => $amount) {
+            $parts[] = number_format($amount, 2, '.', '').' '.$currency;
+        }
+
+        return implode(' + ', $parts);
+    }
+
+    /**
+     * @param list<Spend> $spends
+     *
+     * @return list<string>
+     */
+    private function extractAvailableCurrencies(array $spends): array
+    {
+        $keys = [];
+        foreach ($spends as $spend) {
+            $code = (string) $spend->getCurrency()?->getCode();
+            if ('' === $code) {
+                continue;
+            }
+            $keys[$code] = true;
+        }
+
+        $currencies = array_keys($keys);
+        sort($currencies);
+
+        return $currencies;
+    }
+
+    /**
+     * @param list<Spend> $spends
+     *
+     * @return list<string>
+     */
+    private function extractAvailableUsers(array $spends): array
+    {
+        $keys = [];
+        foreach ($spends as $spend) {
+            $username = (string) $spend->getUserAdded()?->getUsername();
+            if ('' === $username) {
+                continue;
+            }
+            $keys[$username] = true;
+        }
+
+        $users = array_keys($keys);
+        sort($users);
+
+        return $users;
+    }
+
+    /**
+     * @param list<SpendingPlan> $plans
+     *
+     * @return list<array{id: int, label: string}>
+     */
+    private function extractAvailablePlans(array $plans): array
+    {
+        $items = [];
+        foreach ($plans as $plan) {
+            $id = (int) $plan->getId();
+            if ($id <= 0) {
+                continue;
+            }
+
+            $items[] = [
+                'id' => $id,
+                'label' => sprintf(
+                    '%s (%s - %s)',
+                    $plan->getName(),
+                    $plan->getDateFrom()->format('Y-m-d'),
+                    $plan->getDateTo()->format('Y-m-d')
+                ),
+            ];
+        }
+
+        usort($items, static fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
+
+        return $items;
+    }
+
+    /**
+     * @return list<DashboardMonthTabDto>
+     */
+    private function buildSpendMonthTabs(
+        \DateTimeImmutable $selectedMonthStart,
+        string $selectedMonthKey,
+        \DateTimeImmutable $now,
+    ): array {
+        $keys = [];
+        foreach ($this->spendRepository->findMonthKeys() as $monthKey) {
+            $keys[$monthKey] = true;
+        }
+
+        $keys[$now->format('Y-m')] = true;
+        $keys[$selectedMonthKey] = true;
+        $keys[$selectedMonthStart->modify('first day of previous month')->format('Y-m')] = true;
+        $keys[$selectedMonthStart->modify('first day of next month')->format('Y-m')] = true;
+
+        $monthKeys = array_keys($keys);
+        sort($monthKeys);
+
+        $tabs = [];
+        foreach ($monthKeys as $monthKey) {
+            $tabs[] = new DashboardMonthTabDto(
+                $monthKey,
+                $this->monthStart($monthKey)->format('F Y'),
+                $monthKey === $selectedMonthKey,
+            );
+        }
+
+        return $tabs;
+    }
+
+    private function compareSpend(Spend $left, Spend $right, string $sort): int
+    {
+        return match ($sort) {
+            self::SORT_AMOUNT => (float) $left->getAmount() <=> (float) $right->getAmount(),
+            self::SORT_CURRENCY => strcmp(
+                (string) $left->getCurrency()?->getCode(),
+                (string) $right->getCurrency()?->getCode()
+            ),
+            self::SORT_USERNAME => strcmp(
+                (string) $left->getUserAdded()?->getUsername(),
+                (string) $right->getUserAdded()?->getUsername()
+            ),
+            self::SORT_SPENDING_PLAN => strcmp(
+                (string) $left->getSpendingPlan()?->getName(),
+                (string) $right->getSpendingPlan()?->getName()
+            ),
+            self::SORT_CREATED_AT => $left->getCreatedAt() <=> $right->getCreatedAt(),
+            default => $left->getSpendDate() <=> $right->getSpendDate(),
+        };
+    }
+
+    private function sanitizeSort(?string $sort): string
+    {
+        $allowed = [
+            self::SORT_SPEND_DATE,
+            self::SORT_CREATED_AT,
+            self::SORT_AMOUNT,
+            self::SORT_CURRENCY,
+            self::SORT_USERNAME,
+            self::SORT_SPENDING_PLAN,
+        ];
+
+        if (null === $sort || !in_array($sort, $allowed, true)) {
+            return self::SORT_SPEND_DATE;
+        }
+
+        return $sort;
+    }
+
+    private function sanitizeDirection(?string $direction): string
+    {
+        if ('asc' === $direction) {
+            return 'asc';
+        }
+
+        return 'desc';
+    }
+
+    private function sanitizePerPage(mixed $value): int
+    {
+        $resolved = is_scalar($value) ? (int) $value : 0;
+        if ($resolved < 1 || $resolved > 100) {
+            return self::PER_PAGE_OPTIONS[0];
+        }
+
+        return $resolved;
+    }
+
+    private function sanitizePage(mixed $value, int $totalPages): int
+    {
+        $page = is_scalar($value) ? (int) $value : 1;
+        if ($page < 1) {
+            $page = 1;
+        }
+
+        if ($page > $totalPages) {
+            $page = $totalPages;
+        }
+
+        return $page;
+    }
+
+    private function sanitizeOptionalText(mixed $value): string
+    {
+        if (!is_scalar($value)) {
+            return '';
+        }
+
+        return trim((string) $value);
+    }
+
+    private function sanitizeMonthKey(?string $monthKey): ?string
+    {
+        if (null === $monthKey) {
+            return null;
+        }
+
+        $normalized = trim($monthKey);
+        if (1 !== preg_match('/^\d{4}-\d{2}$/', $normalized)) {
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function monthStart(string $monthKey): \DateTimeImmutable
+    {
+        return \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $monthKey.'-01 00:00:00')
+            ?: new \DateTimeImmutable('first day of this month');
     }
 }

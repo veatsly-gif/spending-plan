@@ -16,12 +16,15 @@ final class AdminUserEditType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('username', TextType::class)
+            ->add('username', TextType::class, [
+                'label' => 'form.username',
+            ])
             ->add('roles', ChoiceType::class, [
+                'label' => 'form.roles',
                 'choices' => [
-                    'Admin' => 'ROLE_ADMIN',
-                    'User' => 'ROLE_USER',
-                    'Incomer' => 'ROLE_INCOMER',
+                    'form.role.admin' => 'ROLE_ADMIN',
+                    'form.role.user' => 'ROLE_USER',
+                    'form.role.incomer' => 'ROLE_INCOMER',
                 ],
                 'multiple' => true,
                 'expanded' => false,

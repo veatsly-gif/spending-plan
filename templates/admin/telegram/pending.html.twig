@@ -1,22 +1,23 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Telegram Approvals{% endblock %}
+{% block title %}{{ 'admin.telegram.pending_title'|trans }}{% endblock %}
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">Telegram</span>
-        <h1>Pending Approval Requests</h1>
-        <p>Users who started the bot and are waiting for access.</p>
+        <span class="kicker">{{ 'admin.telegram.kicker'|trans }}</span>
+        <h1>{{ 'admin.telegram.pending_heading'|trans }}</h1>
+        <p>{{ 'admin.telegram.pending_description'|trans }}</p>
 
         <section class="table-wrap reveal delay">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Telegram ID</th>
-                        <th>Name</th>
-                        <th>Requested At</th>
-                        <th>Actions</th>
+                        <th>{{ 'common.id'|trans }}</th>
+                        <th>{{ 'admin.telegram.telegram_id'|trans }}</th>
+                        <th>{{ 'common.name'|trans }}</th>
+                        <th>{{ 'admin.telegram.requested_at'|trans }}</th>
+                        <th>{{ 'common.actions'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,11 +29,11 @@
                             <td>{{ tgUser.createdAt|date('Y-m-d H:i') }}</td>
                             <td>
                                 <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}">Match existing user</a>
-                                    <a class="btn" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}">Create user + approve</a>
-                                    <form method="post" action="{{ path('admin_telegram_reject', {id: tgUser.id}) }}" onsubmit="return confirm('Reject this Telegram registration request?');">
+                                    <a class="btn btn-ghost" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}">{{ 'admin.telegram.match_existing'|trans }}</a>
+                                    <a class="btn" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}">{{ 'admin.telegram.create_and_approve'|trans }}</a>
+                                    <form method="post" action="{{ path('admin_telegram_reject', {id: tgUser.id}) }}" onsubmit="return confirm('{{ 'admin.telegram.confirm_reject'|trans|e('js') }}');">
                                         <input type="hidden" name="_token" value="{{ csrf_token('reject_telegram_' ~ tgUser.id) }}">
-                                        <button class="btn btn-danger" type="submit">Reject</button>
+                                        <button class="btn btn-danger" type="submit">{{ 'common.reject'|trans }}</button>
                                     </form>
                                 </div>
                             </td>
@@ -40,7 +41,7 @@
                     {% else %}
                         <tr>
                             <td colspan="5">
-                                <div class="empty"><strong>No pending Telegram users.</strong></div>
+                                <div class="empty"><strong>{{ 'admin.telegram.no_pending'|trans }}</strong></div>
                             </td>
                         </tr>
                     {% endfor %}

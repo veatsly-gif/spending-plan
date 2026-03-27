@@ -1,12 +1,13 @@
 {% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
 
-{% block title %}Login{% endblock %}
+{% block title %}{{ 'login.title'|trans }}{% endblock %}
 
 {% block body %}
     <div class="auth-wrap">
         <main class="auth-card reveal">
-            <span class="kicker">Secure Access</span>
-            <h1>Sign In</h1>
+            <span class="kicker">{{ 'login.kicker'|trans }}</span>
+            <h1>{{ 'login.heading'|trans }}</h1>
 
             {% if error %}
                 <div class="flash flash-error">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
@@ -14,18 +15,18 @@
 
             <form method="post">
                 <div>
-                    <label for="username">Username</label>
+                    <label for="username">{{ 'login.username'|trans }}</label>
                     <input id="username" name="_username" type="text" value="{{ last_username }}" required autofocus>
                 </div>
                 <div>
-                    <label for="password">Password</label>
+                    <label for="password">{{ 'login.password'|trans }}</label>
                     <input id="password" name="_password" type="password" required>
                 </div>
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-                <button type="submit">Sign in</button>
+                <button type="submit">{{ 'login.sign_in'|trans }}</button>
             </form>
 
-            <p class="subtle">Seed users: <code>admin/admin</code> and <code>test/temp</code></p>
+            <p class="subtle">{{ 'login.seed_users'|trans|raw }}</p>
         </main>
     </div>
 {% endblock %}

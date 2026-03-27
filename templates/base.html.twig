@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}Spending Plan{% endblock %}</title>
+        <title>{% block title %}{{ 'base.title'|trans }}{% endblock %}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -16,21 +16,37 @@
         {% set globalPopup = is_granted('ROLE_ADMIN') ? admin_popup() : {show: false, title: '', message: '', monthKey: ''} %}
         <header class="site-nav">
             <div class="nav-shell">
-                <a class="brand" href="{{ path('web_home') }}">Spending Plan</a>
+                <a class="brand" href="{{ path('web_home') }}">{{ 'base.brand'|trans }}</a>
                 <nav class="nav-links">
-                    <a href="{{ path('web_home') }}">Home</a>
+                    <a href="{{ path('web_home') }}">{{ 'nav.home'|trans }}</a>
                     {% if app.user %}
-                        <a href="{{ path('app_dashboard') }}">Dashboard</a>
+                        <a href="{{ path('app_dashboard') }}">{{ 'nav.dashboard'|trans }}</a>
                         {% if is_granted('ROLE_ADMIN') %}
-                            <a href="{{ path('admin_dashboard') }}">Admin</a>
+                            <a href="{{ path('admin_dashboard') }}">{{ 'nav.admin'|trans }}</a>
                         {% endif %}
                         <form method="post" action="{{ path('app_logout') }}" style="display:inline;">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
-                            <button type="submit" class="btn-ghost">Logout {{ app.user.userIdentifier }}</button>
+                            <button type="submit" class="btn-ghost">
+                                {{ 'nav.logout'|trans({'%user%': app.user.userIdentifier}) }}
+                            </button>
                         </form>
                     {% else %}
-                        <a href="{{ path('app_login') }}">Login</a>
+                        <a href="{{ path('app_login') }}">{{ 'nav.login'|trans }}</a>
                     {% endif %}
+                    <div class="lang-switch">
+                        <a
+                            href="{{ path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}) }}"
+                            class="{{ app.request.locale starts with 'en' ? 'is-active' : '' }}"
+                        >
+                            EN
+                        </a>
+                        <a
+                            href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}"
+                            class="{{ app.request.locale starts with 'ru' ? 'is-active' : '' }}"
+                        >
+                            RU
+                        </a>
+                    </div>
                 </nav>
             </div>
         </header>
@@ -39,7 +55,7 @@
             {% for label, messages in app.flashes %}
                 {% for message in messages %}
                     <div class="flash flash-{{ label }} reveal">
-                        <strong>{{ label|upper }}</strong> {{ message }}
+                        <strong>{{ ('flash.' ~ label)|trans }}</strong> {{ message|trans }}
                     </div>
                 {% endfor %}
             {% endfor %}
@@ -48,11 +64,11 @@
 
         {% if globalPopup.show %}
             <aside class="sp-popup" data-sp-popup>
-                <button type="button" class="sp-popup-close" data-sp-popup-close aria-label="Close">×</button>
+                <button type="button" class="sp-popup-close" data-sp-popup-close aria-label="{{ 'base.close'|trans }}">×</button>
                 <h3>{{ globalPopup.title }}</h3>
                 <p>{{ globalPopup.message }}</p>
                 <a class="btn" href="{{ path('admin_spending_plans_index', {month: globalPopup.monthKey}) }}">
-                    Open Spending Plans
+                    {{ 'admin.spending_plans.open'|trans }}
                 </a>
             </aside>
             <script>

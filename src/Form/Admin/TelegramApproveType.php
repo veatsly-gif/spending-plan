@@ -15,9 +15,10 @@ final class TelegramApproveType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('user', EntityType::class, [
+            'label' => 'form.user',
             'class' => User::class,
             'choice_label' => 'username',
-            'placeholder' => 'Select local user',
+            'placeholder' => 'form.select_local_user',
             'required' => true,
         ]);
     }
