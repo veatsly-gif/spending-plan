@@ -8,6 +8,8 @@ use App\Entity\Spend;
 use App\Entity\Currency;
 use App\Entity\SpendingPlan;
 use App\Entity\User;
+use App\Redis\RedisDataKey;
+use App\Service\RedisStore;
 use App\Tests\Fixtures\BaseCurrenciesFixture;
 use App\Tests\Fixtures\BaseSpendsFixture;
 use App\Tests\Fixtures\BaseUsersFixture;
@@ -80,6 +82,18 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
         self::assertSame('37.20', $spend->getAmount());
         self::assertSame('GEL', $spend->getCurrency()?->getCode());
         self::assertSame('March base plan', $spend->getSpendingPlan()?->getName());
+
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('37.20 GEL', $crawler->text(''));
+
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $snapshot = $redisStore->getJsonByDataKey(
+            RedisDataKey::MONTHLY_BALANCE_SNAPSHOT,
+            ['monthKey' => (new \DateTimeImmutable())->format('Y-m')]
+        );
+        self::assertIsArray($snapshot);
+        self::assertSame('37.20', (string) ($snapshot['monthSpentGel'] ?? ''));
     }
 
     public function testDashboardShowsSpendWidgetFromStoredRecords(): void

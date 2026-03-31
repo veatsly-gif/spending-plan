@@ -16,6 +16,7 @@ use App\DTO\Controller\Web\DashboardSpendListPageDto;
 use App\DTO\Controller\Web\DashboardSpendWidgetDto;
 use App\DTO\Controller\Web\IncomeCreateResultDto;
 use App\DTO\Controller\Web\SpendCreateResultDto;
+use App\Event\MonthlyBalanceRefreshRequestedEvent;
 use App\Entity\Income;
 use App\Entity\Spend;
 use App\Entity\SpendingPlan;
@@ -25,6 +26,8 @@ use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\Income\IncomeRateService;
+use App\Service\MonthlyBalanceCacheService;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class DashboardControllerService
 {
@@ -46,6 +49,8 @@ final class DashboardControllerService
         private readonly SpendRepository $spendRepository,
         private readonly SpendingPlanRepository $spendingPlanRepository,
         private readonly IncomeRateService $incomeRateService,
+        private readonly MonthlyBalanceCacheService $monthlyBalanceCacheService,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -53,65 +58,9 @@ final class DashboardControllerService
     {
         $isIncomer = $this->hasRole($user, 'ROLE_INCOMER');
         $monthStart = $now->modify('first day of this month')->setTime(0, 0);
-        $monthEnd = $monthStart->modify('last day of this month')->setTime(0, 0);
-        $today = $now->setTime(0, 0);
-        $liveRates = $this->incomeRateService->getLiveGelRates() ?? [];
-
-        $monthIncomes = $this->incomeRepository->findForMonth($monthStart);
+        $balanceSnapshot = $this->monthlyBalanceCacheService->getOrRefresh($now);
         $ratesSnapshot = $this->incomeRateService->getLiveRates();
         $monthSpends = $this->spendRepository->findForMonth($monthStart);
-        $monthPlans = $this->spendingPlanRepository->findForMonth($monthStart, $monthEnd);
-
-        $totalIncomeGel = 0.0;
-        foreach ($monthIncomes as $income) {
-            $converted = $this->convertToGel((float) $income->getAmount(), (string) $income->getCurrency()?->getCode(), $liveRates);
-            if (null !== $converted) {
-                $totalIncomeGel += $converted;
-            }
-        }
-
-        $monthSpentGel = 0.0;
-        $todaySpentGel = 0.0;
-        foreach ($monthSpends as $spend) {
-            $converted = $this->convertToGel((float) $spend->getAmount(), (string) $spend->getCurrency()?->getCode(), $liveRates);
-            if (null === $converted) {
-                continue;
-            }
-
-            $monthSpentGel += $converted;
-            if ($spend->getSpendDate() == $today) {
-                $todaySpentGel += $converted;
-            }
-        }
-
-        $monthLimitGel = 0.0;
-        $regularAndPlannedGel = 0.0;
-        foreach ($monthPlans as $plan) {
-            $converted = $this->convertToGel((float) $plan->getLimitAmount(), (string) $plan->getCurrency()?->getCode(), $liveRates);
-            if (null === $converted) {
-                continue;
-            }
-
-            $monthLimitGel += $converted;
-            if (in_array($plan->getPlanType(), [SpendingPlan::PLAN_TYPE_REGULAR, SpendingPlan::PLAN_TYPE_PLANNED], true)) {
-                $regularAndPlannedGel += $converted;
-            }
-        }
-
-        $progressPercent = 0;
-        if ($monthLimitGel > 0) {
-            $progressPercent = (int) round(($monthSpentGel / $monthLimitGel) * 100);
-        } elseif ($monthSpentGel > 0) {
-            $progressPercent = 100;
-        }
-
-        $progressBarPercent = max(0, min(100, $progressPercent));
-        $progressTone = 'ok';
-        if ($progressPercent > 90) {
-            $progressTone = 'danger';
-        } elseif ($progressPercent > 80) {
-            $progressTone = 'warning';
-        }
 
         $recentSpends = array_slice($monthSpends, 0, 3);
         $recentSpendItems = array_map(fn (Spend $spend): DashboardSpendItemDto => $this->mapSpend($spend), $recentSpends);
@@ -120,21 +69,21 @@ final class DashboardControllerService
             $isIncomer,
             new DashboardIncomeWidgetDto(
                 $monthStart->format('F Y'),
-                number_format($totalIncomeGel, 2, '.', ''),
-                number_format($regularAndPlannedGel, 2, '.', ''),
-                number_format($totalIncomeGel - $regularAndPlannedGel, 2, '.', ''),
+                $balanceSnapshot->totalIncomeGel,
+                $balanceSnapshot->regularAndPlannedGel,
+                $balanceSnapshot->availableToSpendGel,
                 $ratesSnapshot?->eurGel,
                 $ratesSnapshot?->usdtGel,
                 null !== $ratesSnapshot ? $ratesSnapshot->updatedAt->format('Y-m-d H:i') : null,
             ),
             new DashboardSpendWidgetDto(
                 $monthStart->format('F Y'),
-                number_format($monthSpentGel, 2, '.', ''),
-                number_format($monthLimitGel, 2, '.', ''),
-                $progressPercent,
-                $progressBarPercent,
-                $progressTone,
-                number_format($todaySpentGel, 2, '.', ''),
+                $balanceSnapshot->monthSpentGel,
+                $balanceSnapshot->monthLimitGel,
+                $balanceSnapshot->monthSpendProgressPercent,
+                $balanceSnapshot->monthSpendProgressBarPercent,
+                $balanceSnapshot->monthSpendProgressTone,
+                $balanceSnapshot->todaySpentGel,
                 $recentSpendItems,
             )
         );
@@ -143,16 +92,12 @@ final class DashboardControllerService
     public function buildIncomeListViewData(\DateTimeImmutable $now): DashboardIncomeListPageDto
     {
         $monthStart = $now->modify('first day of this month')->setTime(0, 0);
+        $balanceSnapshot = $this->monthlyBalanceCacheService->getOrRefresh($now);
         $incomes = $this->incomeRepository->findForMonth($monthStart);
         $items = [];
-        $totalAmountInGel = 0.0;
         $totalOfficialRatedAmountInGel = 0.0;
         foreach ($incomes as $income) {
             $items[] = $this->mapIncome($income);
-            if (null !== $income->getAmountInGel()) {
-                $totalAmountInGel += (float) $income->getAmountInGel();
-            }
-
             if (null !== $income->getOfficialRatedAmountInGel()) {
                 $totalOfficialRatedAmountInGel += (float) $income->getOfficialRatedAmountInGel();
             }
@@ -161,7 +106,7 @@ final class DashboardControllerService
         return new DashboardIncomeListPageDto(
             $monthStart->format('F Y'),
             $items,
-            number_format($totalAmountInGel, 2, '.', ''),
+            $balanceSnapshot->totalIncomeGel,
             number_format($totalOfficialRatedAmountInGel, 4, '.', '')
         );
     }
@@ -391,6 +336,10 @@ final class DashboardControllerService
         }
 
         $this->incomeRepository->save($income, true);
+        $this->dispatchMonthlyBalanceRefresh(
+            $income->getCreatedAt()->format('Y-m'),
+            'income.create'
+        );
 
         return new IncomeCreateResultDto(true);
     }
@@ -426,6 +375,7 @@ final class DashboardControllerService
             ->setComment($draft->getComment());
 
         $this->spendRepository->save($spend, true);
+        $this->dispatchMonthlyBalanceRefresh($spendDate->format('Y-m'), 'spend.create');
 
         return new SpendCreateResultDto(true);
     }
@@ -447,6 +397,7 @@ final class DashboardControllerService
             return new SpendCreateResultDto(false, 'Spending plan is required.');
         }
 
+        $previousMonthKey = $spend->getSpendDate()->format('Y-m');
         $spendDate = $draft->getSpendDate()->setTime(0, 0);
         if ($spendDate < $spendingPlan->getDateFrom() || $spendDate > $spendingPlan->getDateTo()) {
             return new SpendCreateResultDto(false, 'Spend date must be inside selected spending plan period.');
@@ -460,8 +411,20 @@ final class DashboardControllerService
             ->setComment($draft->getComment());
 
         $this->spendRepository->save($spend, true);
+        $this->dispatchMonthlyBalanceRefresh($previousMonthKey, 'spend.update');
+        $newMonthKey = $spendDate->format('Y-m');
+        if ($newMonthKey !== $previousMonthKey) {
+            $this->dispatchMonthlyBalanceRefresh($newMonthKey, 'spend.update');
+        }
 
         return new SpendCreateResultDto(true);
+    }
+
+    public function deleteSpend(Spend $spend): void
+    {
+        $monthKey = $spend->getSpendDate()->format('Y-m');
+        $this->spendRepository->remove($spend, true);
+        $this->dispatchMonthlyBalanceRefresh($monthKey, 'spend.delete');
     }
 
     private function hasRole(User $user, string $role): bool
@@ -498,26 +461,15 @@ final class DashboardControllerService
         );
     }
 
-    /**
-     * @param array<string, string> $liveRates
-     */
-    private function convertToGel(float $amount, string $currencyCode, array $liveRates): ?float
+    private function dispatchMonthlyBalanceRefresh(string $monthKey, string $source): void
     {
-        $code = strtoupper(trim($currencyCode));
-        if ('' === $code) {
-            return null;
-        }
-
-        if ('GEL' === $code) {
-            return $amount;
-        }
-
-        $rate = $liveRates[$code] ?? null;
-        if (null === $rate || !is_numeric($rate)) {
-            return null;
-        }
-
-        return $amount * (float) $rate;
+        $this->eventDispatcher->dispatch(
+            new MonthlyBalanceRefreshRequestedEvent(
+                $monthKey,
+                $source,
+                new \DateTimeImmutable()
+            )
+        );
     }
 
     /**

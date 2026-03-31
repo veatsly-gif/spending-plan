@@ -10,16 +10,19 @@ use App\DTO\Controller\Admin\AdminSpendingPlanDraftDto;
 use App\DTO\Controller\Admin\AdminSpendingPlanMonthTabDto;
 use App\DTO\Controller\Admin\AdminSpendingPlanPopupDto;
 use App\DTO\Controller\Admin\AdminSpendingPlansIndexViewDto;
+use App\Event\MonthlyBalanceRefreshRequestedEvent;
 use App\Entity\SpendingPlan;
 use App\Repository\CurrencyRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\SpendingPlanSuggestionCacheService;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class AdminSpendingPlanControllerService
 {
     public function __construct(
         private readonly SpendingPlanSuggestionCacheService $suggestionCacheService,
         private readonly CurrencyRepository $currencyRepository,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -106,6 +109,7 @@ final class AdminSpendingPlanControllerService
         $spendingPlanRepository->save($spendingPlan, true);
 
         $this->removeSuggestionBySignature($spendingPlan);
+        $this->dispatchRefreshForPlanMonths($spendingPlan, 'spending_plan.create');
 
         return new AdminActionResultDto(true);
     }
@@ -121,6 +125,7 @@ final class AdminSpendingPlanControllerService
 
         $spendingPlan->touch();
         $spendingPlanRepository->save($spendingPlan, true);
+        $this->dispatchRefreshForPlanMonths($spendingPlan, 'spending_plan.update');
 
         return new AdminActionResultDto(true);
     }
@@ -129,6 +134,7 @@ final class AdminSpendingPlanControllerService
         SpendingPlan $spendingPlan,
         SpendingPlanRepository $spendingPlanRepository,
     ): AdminActionResultDto {
+        $this->dispatchRefreshForPlanMonths($spendingPlan, 'spending_plan.delete');
         $spendingPlanRepository->remove($spendingPlan, true);
 
         return new AdminActionResultDto(true);
@@ -189,6 +195,7 @@ final class AdminSpendingPlanControllerService
         $plan->setCurrency($currency);
 
         $spendingPlanRepository->save($plan, true);
+        $this->dispatchRefreshForPlanMonths($plan, 'spending_plan.approve');
 
         return new AdminSpendingPlanApproveResultDto(true, $plan);
     }
@@ -311,6 +318,24 @@ final class AdminSpendingPlanControllerService
             $this->suggestionCacheService->removeSuggestion($monthKey, $suggestion->id);
 
             return;
+        }
+    }
+
+    private function dispatchRefreshForPlanMonths(SpendingPlan $spendingPlan, string $source): void
+    {
+        $from = $spendingPlan->getDateFrom()->setTime(0, 0)->modify('first day of this month');
+        $to = $spendingPlan->getDateTo()->setTime(0, 0)->modify('first day of this month');
+
+        $cursor = $from;
+        while ($cursor <= $to) {
+            $this->eventDispatcher->dispatch(
+                new MonthlyBalanceRefreshRequestedEvent(
+                    $cursor->format('Y-m'),
+                    $source,
+                    new \DateTimeImmutable()
+                )
+            );
+            $cursor = $cursor->modify('+1 month');
         }
     }
 }

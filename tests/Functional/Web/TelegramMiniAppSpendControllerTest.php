@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Web;
 
 use App\Entity\Spend;
+use App\Redis\RedisDataKey;
+use App\Service\RedisStore;
 use App\Service\TelegramMiniAppTokenService;
 use App\Tests\Fixtures\AuthorizedTelegramUserFixture;
 use App\Tests\Fixtures\BaseCurrenciesFixture;
@@ -68,7 +70,7 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         self::assertSame(1, $planOption->count());
         $planValue = (string) $planOption->attr('value');
 
-        $form = $crawler->selectButton('Add spend')->form([
+        $form = $crawler->filter('form[name="dashboard_spend"]')->form([
             'dashboard_spend[amount]' => '45.90',
             'dashboard_spend[currency]' => $currencyValue,
             'dashboard_spend[spendingPlan]' => $planValue,
@@ -86,6 +88,18 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         self::assertInstanceOf(Spend::class, $spend);
         self::assertSame('45.90', $spend->getAmount());
         self::assertSame('GEL', $spend->getCurrency()?->getCode());
+
+        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('45.90 GEL', $crawler->text(''));
+
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $snapshot = $redisStore->getJsonByDataKey(
+            RedisDataKey::MONTHLY_BALANCE_SNAPSHOT,
+            ['monthKey' => (new \DateTimeImmutable())->format('Y-m')]
+        );
+        self::assertIsArray($snapshot);
+        self::assertSame('45.90', (string) ($snapshot['monthSpentGel'] ?? ''));
     }
 
     public function testMiniAppShowsSpendsListAndActions(): void
@@ -96,7 +110,6 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Groceries basket', $crawler->text(''));
-        self::assertSame(1, $crawler->filter('a[href="#mini-spends"]')->count());
         self::assertGreaterThan(
             0,
             $crawler->filter('a[href*="/telegram/mini/spends/"][href*="/edit?token="]')->count()

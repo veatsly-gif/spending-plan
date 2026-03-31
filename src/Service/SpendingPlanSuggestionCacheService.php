@@ -6,11 +6,10 @@ namespace App\Service;
 
 use App\DTO\Controller\Admin\AdminSpendingPlanSuggestionDto;
 use App\Entity\SpendingPlan;
+use App\Redis\RedisDataKey;
 
 final class SpendingPlanSuggestionCacheService
 {
-    private const SUGGESTIONS_PREFIX = 'sp:suggestions:';
-
     public function __construct(
         private readonly RedisStore $redisStore,
     ) {
@@ -18,7 +17,10 @@ final class SpendingPlanSuggestionCacheService
 
     public function hasSuggestions(string $monthKey): bool
     {
-        return null !== $this->redisStore->get($this->suggestionKey($monthKey));
+        return null !== $this->redisStore->getByDataKey(
+            RedisDataKey::SPENDING_PLAN_SUGGESTIONS,
+            ['monthKey' => $monthKey]
+        );
     }
 
     /**
@@ -31,7 +33,11 @@ final class SpendingPlanSuggestionCacheService
             $payload[] = $suggestion->toArray();
         }
 
-        $this->redisStore->set($this->suggestionKey($monthKey), (string) json_encode($payload));
+        $this->redisStore->setJsonByDataKey(
+            RedisDataKey::SPENDING_PLAN_SUGGESTIONS,
+            ['monthKey' => $monthKey],
+            $payload
+        );
     }
 
     /**
@@ -39,13 +45,11 @@ final class SpendingPlanSuggestionCacheService
      */
     public function getSuggestions(string $monthKey): array
     {
-        $json = $this->redisStore->get($this->suggestionKey($monthKey));
-        if (null === $json || '' === trim($json)) {
-            return [];
-        }
-
-        $decoded = json_decode($json, true);
-        if (!is_array($decoded)) {
+        $decoded = $this->redisStore->getJsonByDataKey(
+            RedisDataKey::SPENDING_PLAN_SUGGESTIONS,
+            ['monthKey' => $monthKey]
+        );
+        if (null === $decoded) {
             return [];
         }
 
@@ -75,7 +79,10 @@ final class SpendingPlanSuggestionCacheService
 
     public function clearSuggestions(string $monthKey): void
     {
-        $this->redisStore->delete($this->suggestionKey($monthKey));
+        $this->redisStore->deleteByDataKey(
+            RedisDataKey::SPENDING_PLAN_SUGGESTIONS,
+            ['monthKey' => $monthKey]
+        );
     }
 
     /**
@@ -188,8 +195,4 @@ final class SpendingPlanSuggestionCacheService
         return $result;
     }
 
-    private function suggestionKey(string $monthKey): string
-    {
-        return self::SUGGESTIONS_PREFIX.$monthKey;
-    }
 }

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Redis\RedisDataDictionary;
+use App\Redis\RedisDataKey;
+use App\Redis\RedisDataType;
+
 final class RedisStore
 {
     /**
@@ -13,10 +17,13 @@ final class RedisStore
 
     private ?\Redis $client = null;
     private bool $unavailable = false;
+    private RedisDataDictionary $dictionary;
 
     public function __construct(
         private readonly string $redisDsn,
+        ?RedisDataDictionary $dictionary = null,
     ) {
+        $this->dictionary = $dictionary ?? new RedisDataDictionary();
     }
 
     public function get(string $key): ?string
@@ -59,6 +66,76 @@ final class RedisStore
         }
 
         $client->del($key);
+    }
+
+    public function getByDataKey(RedisDataKey $dataKey, array $context = []): ?string
+    {
+        return $this->get($this->dictionary->key($dataKey, $context));
+    }
+
+    public function getJsonByDataKey(RedisDataKey $dataKey, array $context = []): ?array
+    {
+        $this->assertDataType($dataKey, RedisDataType::JSON);
+
+        $raw = $this->getByDataKey($dataKey, $context);
+        if (null === $raw || '' === trim($raw)) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    public function setByDataKey(
+        RedisDataKey $dataKey,
+        array $context,
+        string $value,
+        ?int $ttlSeconds = null,
+    ): void {
+        $resolvedTtl = null === $ttlSeconds
+            ? $this->dictionary->defaultTtlSeconds($dataKey)
+            : max(0, $ttlSeconds);
+
+        $this->set($this->dictionary->key($dataKey, $context), $value, $resolvedTtl);
+    }
+
+    public function setJsonByDataKey(
+        RedisDataKey $dataKey,
+        array $context,
+        array $value,
+        ?int $ttlSeconds = null,
+    ): void {
+        $this->assertDataType($dataKey, RedisDataType::JSON);
+        $encoded = (string) json_encode($value, JSON_THROW_ON_ERROR);
+        $this->setByDataKey($dataKey, $context, $encoded, $ttlSeconds);
+    }
+
+    public function deleteByDataKey(RedisDataKey $dataKey, array $context = []): void
+    {
+        $this->delete($this->dictionary->key($dataKey, $context));
+    }
+
+    public function resolveDataKey(RedisDataKey $dataKey, array $context = []): string
+    {
+        return $this->dictionary->key($dataKey, $context);
+    }
+
+    private function assertDataType(RedisDataKey $dataKey, RedisDataType $expectedType): void
+    {
+        $actualType = $this->dictionary->type($dataKey);
+        if ($actualType !== $expectedType) {
+            throw new \InvalidArgumentException(sprintf(
+                'Redis key %s expected %s, got %s.',
+                $dataKey->value,
+                $expectedType->value,
+                $actualType->value
+            ));
+        }
     }
 
     private function getClient(): ?\Redis

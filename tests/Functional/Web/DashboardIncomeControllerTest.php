@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Web;
 
 use App\Entity\Income;
+use App\Redis\RedisDataKey;
 use App\Service\RedisStore;
 use App\Tests\Fixtures\BaseCurrenciesFixture;
 use App\Tests\Fixtures\BaseIncomesFixture;
@@ -44,11 +45,11 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
     public function testIncomerCanAddIncomeWithConversion(): void
     {
         $redisStore = static::getContainer()->get(RedisStore::class);
-        $redisStore->set('income:rates:live', (string) json_encode([
+        $redisStore->setJsonByDataKey(RedisDataKey::INCOME_RATES_LIVE, [], [
             'eurGel' => '2.500000',
             'usdtGel' => '2.700000',
             'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
         $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
         $crawler = $this->client->request('GET', '/dashboard');
@@ -117,15 +118,60 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
     public function testDashboardIncomeTotalsAreSharedForAllUsers(): void
     {
         $redisStore = static::getContainer()->get(RedisStore::class);
-        $redisStore->set('income:rates:live', (string) json_encode([
+        $redisStore->setJsonByDataKey(RedisDataKey::INCOME_RATES_LIVE, [], [
             'eurGel' => '3.000000',
             'usdtGel' => '2.700000',
             'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-        ], JSON_THROW_ON_ERROR));
+        ]);
 
         $this->loginAs(BaseUsersFixture::ADMIN_USERNAME);
         $crawler = $this->client->request('GET', '/dashboard');
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('250.00 GEL', $crawler->text(''));
+    }
+
+    public function testIncomeRefreshesMonthlyBalanceCacheAcrossDashboardAndIncomesPage(): void
+    {
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $redisStore->setJsonByDataKey(RedisDataKey::INCOME_RATES_LIVE, [], [
+            'eurGel' => '2.500000',
+            'usdtGel' => '2.700000',
+            'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+        ]);
+
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+
+        $eurOption = $crawler->filterXPath(
+            '//select[@name="dashboard_income[currency]"]'
+            .'/option[contains(normalize-space(.), "EUR")]'
+        )->first();
+        self::assertSame(1, $eurOption->count());
+        $eurValue = (string) $eurOption->attr('value');
+
+        $form = $crawler->selectButton('Add income')->form([
+            'dashboard_income[amount]' => '10',
+            'dashboard_income[currency]' => $eurValue,
+            'dashboard_income[comment]' => 'Monthly cache income',
+            'dashboard_income[convertToGel]' => 1,
+        ]);
+        $this->client->submit($form);
+        self::assertResponseRedirects('/dashboard');
+
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('25.00 GEL', $crawler->text(''));
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('25.00 GEL', $crawler->text(''));
+
+        $snapshot = $redisStore->getJsonByDataKey(
+            RedisDataKey::MONTHLY_BALANCE_SNAPSHOT,
+            ['monthKey' => (new \DateTimeImmutable())->format('Y-m')]
+        );
+        self::assertIsArray($snapshot);
+        self::assertSame('25.00', (string) ($snapshot['totalIncomeGel'] ?? ''));
     }
 }

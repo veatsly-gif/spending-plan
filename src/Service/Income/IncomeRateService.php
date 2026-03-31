@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Service\Income;
 
 use App\DTO\Income\IncomeLiveRatesDto;
+use App\Redis\RedisDataKey;
 use App\Service\RedisStore;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class IncomeRateService
 {
-    private const LIVE_RATES_KEY = 'income:rates:live';
     private const NBG_ENDPOINT = 'https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/en/json/';
     private const COINGECKO_ENDPOINT = 'https://api.coingecko.com/api/v3/simple/price';
 
@@ -44,9 +44,10 @@ final class IncomeRateService
             number_format($usdtGel, 6, '.', ''),
             $now
         );
-        $this->redisStore->set(
-            self::LIVE_RATES_KEY,
-            (string) json_encode($dto->toArray(), JSON_THROW_ON_ERROR)
+        $this->redisStore->setJsonByDataKey(
+            RedisDataKey::INCOME_RATES_LIVE,
+            [],
+            $dto->toArray()
         );
 
         return $dto;
@@ -54,18 +55,8 @@ final class IncomeRateService
 
     public function getLiveRates(): ?IncomeLiveRatesDto
     {
-        $json = $this->redisStore->get(self::LIVE_RATES_KEY);
-        if (null === $json || '' === trim($json)) {
-            return null;
-        }
-
-        try {
-            $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        if (!is_array($payload)) {
+        $payload = $this->redisStore->getJsonByDataKey(RedisDataKey::INCOME_RATES_LIVE, []);
+        if (null === $payload) {
             return null;
         }
 

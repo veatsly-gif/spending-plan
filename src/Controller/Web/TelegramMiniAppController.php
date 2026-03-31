@@ -191,7 +191,7 @@ final class TelegramMiniAppController extends AbstractController
         }
 
         if ($this->isCsrfTokenValid('delete_spend_'.$spend->getId(), (string) $request->request->get('_token'))) {
-            $this->spendRepository->remove($spend, true);
+            $this->dashboardControllerService->deleteSpend($spend);
             $this->addFlash('success', 'spend.deleted');
         } else {
             $this->addFlash('error', 'Invalid CSRF token.');

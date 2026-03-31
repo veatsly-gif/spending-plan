@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\User;
+use App\Redis\RedisDataKey;
+use App\Service\RedisStore;
 use App\Tests\Fixtures\DatabaseFixtureInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,6 +38,7 @@ abstract class DatabaseWebTestCase extends WebTestCase
 
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $this->connection = $this->entityManager->getConnection();
+        $this->clearRedisState();
 
         $this->initializeSchemaIfNeeded();
         $this->startTransaction();
@@ -158,5 +161,30 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $_SERVER['APP_SECRET'] = (string) (getenv('APP_SECRET') ?: 'test-secret');
         $_SERVER['TELEGRAM_WEBHOOK_SECRET'] = (string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret');
         $_SERVER['TELEGRAM_BOT_TOKEN'] = (string) (getenv('TELEGRAM_BOT_TOKEN') ?: '');
+    }
+
+    private function clearRedisState(): void
+    {
+        if (!static::getContainer()->has(RedisStore::class)) {
+            return;
+        }
+
+        /** @var RedisStore $redisStore */
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $redisStore->deleteByDataKey(RedisDataKey::INCOME_RATES_LIVE, []);
+
+        $currentMonth = new \DateTimeImmutable('first day of this month');
+        $months = [
+            $currentMonth->modify('-1 month')->format('Y-m'),
+            $currentMonth->format('Y-m'),
+            $currentMonth->modify('+1 month')->format('Y-m'),
+        ];
+
+        foreach ($months as $monthKey) {
+            $redisStore->deleteByDataKey(
+                RedisDataKey::MONTHLY_BALANCE_SNAPSHOT,
+                ['monthKey' => $monthKey]
+            );
+        }
     }
 }

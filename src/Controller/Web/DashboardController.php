@@ -242,7 +242,7 @@ final class DashboardController extends AbstractController
             $this->addFlash('error', 'Invalid CSRF token.');
         } else {
             $month = $spend->getSpendDate()->format('Y-m');
-            $this->spendRepository->remove($spend, true);
+            $this->service->deleteSpend($spend);
             $this->addFlash('success', 'spend.deleted');
 
             return $this->redirectToRoute('app_dashboard_spends', ['month' => $month]);

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Redis\RedisDataKey;
+
 final class NotificationTriggerExecutionStore
 {
-    private const COUNT_PREFIX = 'sp:trigger:count:';
-    private const LAST_PREFIX = 'sp:trigger:last:';
-
     /**
      * @param array{mode: string, interval_seconds: int} $frequency
      */
@@ -48,21 +47,33 @@ final class NotificationTriggerExecutionStore
         $current = $this->getExecutionCount($adminId, $triggerCode);
         $next = $current + 1;
 
-        $this->redisStore->set($this->countKey($adminId, $triggerCode), (string) $next);
-        $this->redisStore->set($this->lastKey($adminId, $triggerCode), (string) $now->getTimestamp());
+        $this->redisStore->setByDataKey(
+            RedisDataKey::NOTIFICATION_TRIGGER_COUNT,
+            $this->triggerContext($adminId, $triggerCode),
+            (string) $next
+        );
+        $this->redisStore->setByDataKey(
+            RedisDataKey::NOTIFICATION_TRIGGER_LAST,
+            $this->triggerContext($adminId, $triggerCode),
+            (string) $now->getTimestamp()
+        );
     }
 
     public function getExecutionCount(int $adminId, string $triggerCode): int
     {
-        $raw = $this->redisStore->get($this->countKey($adminId, $triggerCode));
+        $raw = $this->redisStore->getByDataKey(
+            RedisDataKey::NOTIFICATION_TRIGGER_COUNT,
+            $this->triggerContext($adminId, $triggerCode)
+        );
 
         return null !== $raw && is_numeric($raw) ? (int) $raw : 0;
     }
 
     public function reset(int $adminId, string $triggerCode): void
     {
-        $this->redisStore->delete($this->countKey($adminId, $triggerCode));
-        $this->redisStore->delete($this->lastKey($adminId, $triggerCode));
+        $context = $this->triggerContext($adminId, $triggerCode);
+        $this->redisStore->deleteByDataKey(RedisDataKey::NOTIFICATION_TRIGGER_COUNT, $context);
+        $this->redisStore->deleteByDataKey(RedisDataKey::NOTIFICATION_TRIGGER_LAST, $context);
     }
 
     public function __construct(
@@ -72,7 +83,10 @@ final class NotificationTriggerExecutionStore
 
     private function getLastExecutedAt(int $adminId, string $triggerCode): ?int
     {
-        $raw = $this->redisStore->get($this->lastKey($adminId, $triggerCode));
+        $raw = $this->redisStore->getByDataKey(
+            RedisDataKey::NOTIFICATION_TRIGGER_LAST,
+            $this->triggerContext($adminId, $triggerCode)
+        );
         if (null === $raw || !is_numeric($raw)) {
             return null;
         }
@@ -80,13 +94,14 @@ final class NotificationTriggerExecutionStore
         return (int) $raw;
     }
 
-    private function countKey(int $adminId, string $triggerCode): string
+    /**
+     * @return array{adminId: string, triggerCode: string}
+     */
+    private function triggerContext(int $adminId, string $triggerCode): array
     {
-        return sprintf('%s%d:%s', self::COUNT_PREFIX, $adminId, $triggerCode);
-    }
-
-    private function lastKey(int $adminId, string $triggerCode): string
-    {
-        return sprintf('%s%d:%s', self::LAST_PREFIX, $adminId, $triggerCode);
+        return [
+            'adminId' => (string) $adminId,
+            'triggerCode' => $triggerCode,
+        ];
     }
 }

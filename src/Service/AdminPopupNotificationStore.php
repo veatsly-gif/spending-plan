@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\Controller\Admin\AdminSpendingPlanPopupDto;
+use App\Redis\RedisDataKey;
 
 final class AdminPopupNotificationStore
 {
-    private const POPUP_PREFIX = 'sp:notification:popup:admin:';
-
     public function __construct(
         private readonly RedisStore $redisStore,
     ) {
@@ -19,7 +18,9 @@ final class AdminPopupNotificationStore
      * @param array{
      *     title: string,
      *     message: string,
-     *     monthKey: string
+     *     monthKey: string,
+     *     template?: string,
+     *     actions?: list<array{code: string, label: string}>
      * } $payload
      */
     public function queueDailyPopup(
@@ -28,8 +29,10 @@ final class AdminPopupNotificationStore
         string $dedupeKey,
         array $payload,
     ): void {
-        $key = $this->dailyKey($adminId, $now);
-        $queue = $this->decodeQueue($this->redisStore->get($key));
+        $context = $this->dailyContext($adminId, $now);
+        $queue = $this->decodeQueue(
+            $this->redisStore->getJsonByDataKey(RedisDataKey::ADMIN_DAILY_POPUP_QUEUE, $context)
+        );
 
         foreach ($queue as $item) {
             if (($item['dedupeKey'] ?? null) === $dedupeKey) {
@@ -42,11 +45,14 @@ final class AdminPopupNotificationStore
             'title' => $payload['title'],
             'message' => $payload['message'],
             'monthKey' => $payload['monthKey'],
+            'template' => (string) ($payload['template'] ?? ''),
+            'actions' => $this->sanitizeActions($payload['actions'] ?? []),
         ];
 
-        $this->redisStore->set(
-            $key,
-            (string) json_encode($queue, JSON_THROW_ON_ERROR),
+        $this->redisStore->setJsonByDataKey(
+            RedisDataKey::ADMIN_DAILY_POPUP_QUEUE,
+            $context,
+            $queue,
             $this->secondsToEndOfDay($now)
         );
     }
@@ -55,8 +61,10 @@ final class AdminPopupNotificationStore
         int $adminId,
         \DateTimeImmutable $now,
     ): AdminSpendingPlanPopupDto {
-        $key = $this->dailyKey($adminId, $now);
-        $queue = $this->decodeQueue($this->redisStore->get($key));
+        $context = $this->dailyContext($adminId, $now);
+        $queue = $this->decodeQueue(
+            $this->redisStore->getJsonByDataKey(RedisDataKey::ADMIN_DAILY_POPUP_QUEUE, $context)
+        );
         if ([] === $queue) {
             return new AdminSpendingPlanPopupDto(false, '', '', '');
         }
@@ -67,11 +75,12 @@ final class AdminPopupNotificationStore
         }
 
         if ([] === $queue) {
-            $this->redisStore->delete($key);
+            $this->redisStore->deleteByDataKey(RedisDataKey::ADMIN_DAILY_POPUP_QUEUE, $context);
         } else {
-            $this->redisStore->set(
-                $key,
-                (string) json_encode(array_values($queue), JSON_THROW_ON_ERROR),
+            $this->redisStore->setJsonByDataKey(
+                RedisDataKey::ADMIN_DAILY_POPUP_QUEUE,
+                $context,
+                array_values($queue),
                 $this->secondsToEndOfDay($now)
             );
         }
@@ -81,12 +90,20 @@ final class AdminPopupNotificationStore
             (string) ($first['title'] ?? 'Spending Plan Reminder'),
             (string) ($first['message'] ?? 'Please prepare spending plans.'),
             (string) ($first['monthKey'] ?? ''),
+            (string) ($first['template'] ?? ''),
+            $this->sanitizeActions($first['actions'] ?? []),
         );
     }
 
-    private function dailyKey(int $adminId, \DateTimeImmutable $now): string
+    /**
+     * @return array{adminId: string, date: string}
+     */
+    private function dailyContext(int $adminId, \DateTimeImmutable $now): array
     {
-        return sprintf('%s%d:%s', self::POPUP_PREFIX, $adminId, $now->format('Y-m-d'));
+        return [
+            'adminId' => (string) $adminId,
+            'date' => $now->format('Y-m-d'),
+        ];
     }
 
     private function secondsToEndOfDay(\DateTimeImmutable $now): int
@@ -98,21 +115,23 @@ final class AdminPopupNotificationStore
     }
 
     /**
-     * @return list<array{dedupeKey: string, title: string, message: string, monthKey: string}>
+     * @return list<array{
+     *     dedupeKey: string,
+     *     title: string,
+     *     message: string,
+     *     monthKey: string,
+     *     template: string,
+     *     actions: list<array{code: string, label: string}>
+     * }>
      */
-    private function decodeQueue(?string $json): array
+    private function decodeQueue(mixed $raw): array
     {
-        if (null === $json || '' === trim($json)) {
-            return [];
-        }
-
-        $decoded = json_decode($json, true);
-        if (!is_array($decoded)) {
+        if (!is_array($raw)) {
             return [];
         }
 
         $queue = [];
-        foreach ($decoded as $row) {
+        foreach ($raw as $row) {
             if (!is_array($row)) {
                 continue;
             }
@@ -122,9 +141,41 @@ final class AdminPopupNotificationStore
                 'title' => (string) ($row['title'] ?? ''),
                 'message' => (string) ($row['message'] ?? ''),
                 'monthKey' => (string) ($row['monthKey'] ?? ''),
+                'template' => (string) ($row['template'] ?? ''),
+                'actions' => $this->sanitizeActions($row['actions'] ?? []),
             ];
         }
 
         return $queue;
+    }
+
+    /**
+     * @return list<array{code: string, label: string}>
+     */
+    private function sanitizeActions(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $actions = [];
+        foreach ($raw as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $code = mb_strtolower(trim((string) ($item['code'] ?? '')));
+            $label = trim((string) ($item['label'] ?? ''));
+            if ('' === $code || '' === $label) {
+                continue;
+            }
+
+            $actions[] = [
+                'code' => $code,
+                'label' => $label,
+            ];
+        }
+
+        return $actions;
     }
 }
