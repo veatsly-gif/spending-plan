@@ -130,6 +130,7 @@
 
                             {% set nextDir = sort == 'createdAt' and dir == 'asc' ? 'desc' : 'asc' %}
                             <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'createdAt', dir: nextDir, page: 1})) }}">{{ 'spends.table.added_at'|trans }}</a></th>
+                            <th>{{ 'common.actions'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -142,6 +143,15 @@
                                 <td>{{ spend.spendingPlanName }}</td>
                                 <td>{{ spend.comment ?? '-' }}</td>
                                 <td>{{ spend.createdAtLabel }}</td>
+                                <td>
+                                    <div class="actions">
+                                        <a class="btn btn-ghost" href="{{ path('app_dashboard_spends_edit', {id: spend.id}) }}">{{ 'common.edit'|trans }}</a>
+                                        <form method="post" action="{{ path('app_dashboard_spends_delete', {id: spend.id}) }}" onsubmit="return confirm('{{ 'spend.confirm_delete'|trans }}');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_spend_' ~ spend.id) }}">
+                                            <button type="submit" class="btn btn-danger">{{ 'common.delete'|trans }}</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

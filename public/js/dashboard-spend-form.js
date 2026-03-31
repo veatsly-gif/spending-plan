@@ -1,4 +1,5 @@
 (function () {
+  window.__dashboardSpendExternalLoaded = true;
   const SUCCESS_CLASS = "is-success-submit";
   const LOADING_CLASS = "is-loading";
   const DONE_CLASS = "is-done";
@@ -14,6 +15,7 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
+    window.__dashboardSpendInitialized = true;
 
     const submitBtn = form.querySelector("[data-spend-submit]");
     const feedback = document.querySelector("[data-spend-feedback]");
@@ -73,6 +75,7 @@
         applyDefaults(form, data.defaults || {});
         playSuccessEffect(form, submitBtn);
         updateSpendWidget(data.widget || null);
+        updateMiniSpendSummary(data.summary || null);
         setFeedback(feedback, data.message || "Spend added.", FEEDBACK_SUCCESS, SUCCESS_HINT_HIDE_MS);
         showInlineSuccessBadge(form, i18n.saved);
 
@@ -245,19 +248,104 @@
       return;
     }
 
-    const countNode = card.querySelector("[data-spend-widget-count]");
-    if (countNode instanceof HTMLElement && Number.isFinite(Number(widget.count))) {
-      countNode.textContent = `${widget.count} records`;
+    const monthNode = card.querySelector("[data-spend-widget-month]");
+    if (monthNode instanceof HTMLElement && typeof widget.monthSpentGel === "string") {
+      monthNode.textContent = `${widget.monthSpentGel} GEL`;
     }
 
-    const totalNode = card.querySelector("[data-spend-widget-total]");
-    if (totalNode instanceof HTMLElement && typeof widget.total === "string") {
-      totalNode.textContent = widget.total;
+    const limitNode = card.querySelector("[data-spend-widget-limit]");
+    if (limitNode instanceof HTMLElement && typeof widget.monthLimitGel === "string") {
+      limitNode.textContent = `${widget.monthLimitGel} GEL`;
     }
 
-    const lastNode = card.querySelector("[data-spend-widget-last]");
-    if (lastNode instanceof HTMLElement && typeof widget.lastLabel === "string") {
-      lastNode.textContent = widget.lastLabel;
+    const progressTextNode = card.querySelector("[data-spend-widget-progress-text]");
+    if (progressTextNode instanceof HTMLElement && Number.isFinite(Number(widget.progressPercent))) {
+      progressTextNode.textContent = `${Math.round(Number(widget.progressPercent))}%`;
+    }
+
+    const progressBarNode = card.querySelector("[data-spend-widget-progress-bar]");
+    if (progressBarNode instanceof HTMLElement) {
+      if (Number.isFinite(Number(widget.progressBarPercent))) {
+        const width = Math.max(0, Math.min(100, Math.round(Number(widget.progressBarPercent))));
+        progressBarNode.style.setProperty("--progress-target", `${width}%`);
+        progressBarNode.style.width = `${width}%`;
+      }
+
+      const tone = typeof widget.progressTone === "string" ? widget.progressTone : "ok";
+      progressBarNode.classList.remove("is-ok", "is-warning", "is-danger");
+      if (tone === "warning" || tone === "danger") {
+        progressBarNode.classList.add(`is-${tone}`);
+      } else {
+        progressBarNode.classList.add("is-ok");
+      }
+    }
+
+    const todayNode = card.querySelector("[data-spend-widget-today]");
+    if (todayNode instanceof HTMLElement && typeof widget.todaySpentGel === "string") {
+      todayNode.textContent = `${widget.todaySpentGel} GEL`;
+    }
+
+    const recentTbody = card.querySelector("[data-spend-widget-recent]");
+    if (recentTbody instanceof HTMLElement && Array.isArray(widget.recentSpends)) {
+      recentTbody.innerHTML = "";
+
+      if (widget.recentSpends.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.textContent = "No spends yet.";
+        row.appendChild(cell);
+        recentTbody.appendChild(row);
+      } else {
+        widget.recentSpends.slice(0, 3).forEach((item) => {
+          const row = document.createElement("tr");
+
+          const amountCell = document.createElement("td");
+          amountCell.textContent = `${item.amount || ""} ${item.currencyCode || ""}`.trim();
+          row.appendChild(amountCell);
+
+          const datetimeCell = document.createElement("td");
+          datetimeCell.textContent = typeof item.datetime === "string" ? item.datetime : "";
+          row.appendChild(datetimeCell);
+
+          const userCell = document.createElement("td");
+          userCell.textContent = typeof item.username === "string" ? item.username : "";
+          row.appendChild(userCell);
+
+          const descriptionCell = document.createElement("td");
+          const rawDescription = typeof item.description === "string" ? item.description.trim() : "";
+          descriptionCell.textContent = rawDescription || "n/a";
+          row.appendChild(descriptionCell);
+
+          recentTbody.appendChild(row);
+        });
+      }
+    }
+
+    card.classList.remove("is-live-updated");
+    void card.offsetWidth;
+    card.classList.add("is-live-updated");
+    window.setTimeout(() => card.classList.remove("is-live-updated"), 900);
+  }
+
+  function updateMiniSpendSummary(summary) {
+    if (!summary || typeof summary !== "object") {
+      return;
+    }
+
+    const todayNode = document.querySelector("[data-mini-spend-today]");
+    if (todayNode instanceof HTMLElement && typeof summary.today === "string") {
+      todayNode.textContent = summary.today;
+    }
+
+    const monthNode = document.querySelector("[data-mini-spend-month]");
+    if (monthNode instanceof HTMLElement && typeof summary.month === "string") {
+      monthNode.textContent = summary.month;
+    }
+
+    const card = document.querySelector("[data-mini-summary-card]");
+    if (!(card instanceof HTMLElement)) {
+      return;
     }
 
     card.classList.remove("is-live-updated");

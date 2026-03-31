@@ -1,0 +1,779 @@
+{% trans_default_domain 'messages' %}
+
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'telegram.mini_spend.title'|trans }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    {% set cssAssetPath = asset('styles/app.css') ~ '?v=' ~ assetVersion %}
+    {% set cssHref = assetBaseHost is not empty ? assetBaseHost ~ cssAssetPath : cssAssetPath %}
+    <link rel="stylesheet" href="{{ cssHref }}">
+    <style>
+        :root {
+            --bg: #f5f7f4;
+            --surface: #fff;
+            --line: #d6dfd2;
+            --text: #1b2520;
+            --muted: #5e7167;
+            --accent: #177e6f;
+            --accent-strong: #115f54;
+            --radius: 16px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--text);
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            background: var(--bg);
+        }
+        h1, h2, h3 {
+            margin: 0 0 10px;
+            font-family: "Space Grotesk", "Avenir Next", sans-serif;
+        }
+        p { margin: 0 0 12px; color: var(--muted); }
+        .page { max-width: 860px; margin: 16px auto 22px; padding: 0 12px; }
+        .panel, .metric, .flash {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+        }
+        .panel { padding: 18px; }
+        .metric { padding: 14px; }
+        .flash { padding: 10px 12px; margin-bottom: 10px; }
+        .grid { display: grid; gap: 10px; }
+        .metrics { margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+        .kicker {
+            display: inline-block;
+            margin-bottom: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            color: var(--accent-strong);
+            background: #d8ece7;
+        }
+        .sp-section { margin-top: 14px; }
+        .actions { display: flex; gap: 8px; }
+        form > div { margin-bottom: 11px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 11px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fbfdfb;
+            color: var(--text);
+        }
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 34px;
+            background-image:
+                linear-gradient(45deg, transparent 50%, #557a70 50%),
+                linear-gradient(135deg, #557a70 50%, transparent 50%);
+            background-position:
+                calc(100% - 18px) calc(50% - 3px),
+                calc(100% - 12px) calc(50% - 3px);
+            background-size: 6px 6px, 6px 6px;
+            background-repeat: no-repeat;
+        }
+        button {
+            appearance: none;
+            border: 1px solid var(--accent);
+            background: var(--accent);
+            color: #fff;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:disabled { opacity: 0.7; cursor: default; }
+        .form-status {
+            margin: 0 0 10px;
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        .form-status-success { color: #0f5f4d; background: #ddf5eb; border: 1px solid #b7e5d4; }
+        .form-status-error { color: #7d2626; background: #ffe8e8; border: 1px solid #f3c3c3; }
+        .form-status-pending { color: #225d73; background: #e6f4fb; border: 1px solid #c8e5f3; }
+        [data-spend-form].is-success-submit { animation: mini-pulse 0.75s ease; }
+        .spend-widget.is-live-updated { animation: mini-flash 0.8s ease; }
+        .dash-progress-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .dash-big {
+            margin: 0;
+            font-family: "Space Grotesk", "Avenir Next", sans-serif;
+            font-size: 1.18rem;
+            color: var(--text);
+        }
+        .dash-progress-track {
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: #e4ece8;
+            overflow: hidden;
+            margin: 8px 0 6px;
+        }
+        .dash-progress-fill {
+            display: block;
+            height: 100%;
+            width: 0;
+            border-radius: 999px;
+            transition: width 0.35s ease, background 0.25s ease;
+            animation: mini-progress-init 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        .dash-progress-fill.is-ok { background: linear-gradient(90deg, #1f8d63 0%, #20a36d 100%); }
+        .dash-progress-fill.is-warning { background: linear-gradient(90deg, #d48518 0%, #eb9f32 100%); }
+        .dash-progress-fill.is-danger { background: linear-gradient(90deg, #b13a3a 0%, #da4d4d 100%); }
+        .dash-today-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
+            padding: 8px 10px;
+            border: 1px solid #e8eeea;
+            border-radius: 10px;
+            background: #fcfefd;
+            margin: 8px 0;
+        }
+        .dash-recent-table {
+            margin-top: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 8px 10px;
+            background: #fff;
+        }
+        .dash-recent-table table {
+            width: 100%;
+            min-width: 520px;
+            border-collapse: collapse;
+        }
+        .dash-recent-table th,
+        .dash-recent-table td {
+            text-align: left;
+            border-bottom: 1px solid #e9eee8;
+            padding: 8px 6px;
+            vertical-align: top;
+        }
+        .dash-recent-table th {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--muted);
+        }
+        .mini-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .mini-brand {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            color: var(--accent-strong);
+            background: #d8ece7;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+        }
+        .mini-locale {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mini-locale .btn.is-active {
+            border-color: var(--accent);
+            background: #d8ece7;
+            color: var(--accent-strong);
+            font-weight: 700;
+        }
+        .mini-tab-nav {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .mini-tab-btn {
+            appearance: none;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--text);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-weight: 600;
+        }
+        .mini-tab-btn.is-active {
+            border-color: var(--accent);
+            background: #d8ece7;
+            color: var(--accent-strong);
+        }
+        .mini-tab-panel[hidden] {
+            display: none !important;
+        }
+        .icon-only {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .icon-only.btn-danger {
+            border-color: #8c3838;
+            background: #8c3838;
+            color: #fff;
+        }
+        .mini-pagination {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .mini-pagination .btn.is-active {
+            border-color: var(--accent);
+            background: #d8ece7;
+        }
+        .mini-pagination .btn.is-disabled {
+            pointer-events: none;
+            opacity: 0.45;
+        }
+        @keyframes mini-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(23, 126, 111, 0.14); }
+            100% { box-shadow: 0 0 0 12px rgba(23, 126, 111, 0); }
+        }
+        @keyframes mini-flash {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.015); }
+            100% { transform: scale(1); }
+        }
+        @keyframes mini-progress-init {
+            from { width: 0; }
+            to { width: var(--progress-target, 0%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .dash-progress-fill { animation: none; }
+        }
+    </style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%2292%22>₾</text></svg>">
+</head>
+<body>
+    <section class="page">
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="flash flash-{{ label }} reveal">
+                    <strong>{{ ('flash.' ~ label)|trans }}</strong> {{ message|trans }}
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
+            {% set currentLocale = app.request.locale|default('en') %}
+            <div class="mini-topbar">
+                <span class="mini-brand">telegram</span>
+                <div class="mini-locale">
+                    <a class="btn btn-ghost {{ currentLocale starts with 'en' ? 'is-active' : '' }}" href="{{ path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}) }}">EN</a>
+                    <a class="btn btn-ghost {{ currentLocale starts with 'ru' ? 'is-active' : '' }}" href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}">RU</a>
+                </div>
+            </div>
+            <h1>{{ 'telegram.mini_spend.heading'|trans }}</h1>
+            <p>{{ 'telegram.mini_spend.description'|trans }}</p>
+
+            <section class="metric spend-widget reveal delay" data-spend-widget>
+                <h3>{{ 'dashboard.spends_for_month'|trans({'%month%': spendWidget.monthLabel}) }}</h3>
+                <div class="dash-progress-head">
+                    <div>
+                        <p class="subtle">{{ 'dashboard.month_spent'|trans }}</p>
+                        <p class="dash-big" data-spend-widget-month>{{ spendWidget.monthSpentGel }} GEL</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p class="subtle">{{ 'dashboard.month_limit'|trans }}</p>
+                        <p class="dash-big" data-spend-widget-limit>{{ spendWidget.monthLimitGel }} GEL</p>
+                    </div>
+                </div>
+                <div class="dash-progress-track">
+                    <span
+                        class="dash-progress-fill is-{{ spendWidget.monthSpendProgressTone }}"
+                        style="--progress-target: {{ spendWidget.monthSpendProgressBarPercent }}%; width: {{ spendWidget.monthSpendProgressBarPercent }}%;"
+                        data-spend-widget-progress-bar
+                    ></span>
+                </div>
+                <p class="subtle">
+                    {{ 'dashboard.progress_to_limit'|trans }}:
+                    <strong data-spend-widget-progress-text>{{ spendWidget.monthSpendProgressPercent }}%</strong>
+                </p>
+                <div class="dash-today-row">
+                    <span>{{ 'dashboard.spends_today'|trans }}</span>
+                    <strong data-spend-widget-today>{{ spendWidget.todaySpentGel }} GEL</strong>
+                </div>
+                <div class="dash-recent-table">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>{{ 'dashboard.table.amount'|trans }}</th>
+                            <th>{{ 'dashboard.table.datetime'|trans }}</th>
+                            <th>{{ 'dashboard.table.user'|trans }}</th>
+                            <th>{{ 'dashboard.table.description'|trans }}</th>
+                        </tr>
+                        </thead>
+                        <tbody data-spend-widget-recent>
+                        {% for spend in spendWidget.recentSpends %}
+                            <tr>
+                                <td>{{ spend.amount }} {{ spend.currencyCode }}</td>
+                                <td>{{ spend.createdAtLabel }}</td>
+                                <td>{{ spend.username }}</td>
+                                <td>{{ spend.comment ?: ('common.na'|trans) }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4">{{ 'dashboard.no_spends_yet'|trans }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {% set currentTab = app.request.query.get('tab') == 'spends' ? 'spends' : 'add' %}
+            <div class="mini-tab-nav" role="tablist" aria-label="{{ 'common.actions'|trans }}">
+                <button
+                    type="button"
+                    class="mini-tab-btn {{ currentTab == 'add' ? 'is-active' : '' }}"
+                    role="tab"
+                    aria-selected="{{ currentTab == 'add' ? 'true' : 'false' }}"
+                    data-mini-tab-trigger="add"
+                >
+                    {{ 'telegram.mini_spend.tab_add'|trans }}
+                </button>
+                <button
+                    type="button"
+                    class="mini-tab-btn {{ currentTab == 'spends' ? 'is-active' : '' }}"
+                    role="tab"
+                    aria-selected="{{ currentTab == 'spends' ? 'true' : 'false' }}"
+                    data-mini-tab-trigger="spends"
+                >
+                    {{ 'telegram.mini_spend.tab_spends'|trans }}
+                </button>
+            </div>
+
+            <section class="sp-section mini-tab-panel" data-mini-tab-panel="add" {{ currentTab != 'add' ? 'hidden' : '' }}>
+                <p class="form-status" data-spend-feedback hidden></p>
+                {{ form_start(spendForm, {'attr': {'data-spend-form': '1'}}) }}
+                    {{ form_row(spendForm.amount) }}
+                    {{ form_row(spendForm.currency) }}
+                    {{ form_row(spendForm.spendingPlan) }}
+                    {{ form_row(spendForm.spendDate) }}
+                    {{ form_row(spendForm.comment) }}
+                    <div class="actions">
+                        <button type="submit" data-spend-submit>{{ 'dashboard.add_spend_button'|trans }}</button>
+                    </div>
+                {{ form_end(spendForm) }}
+            </section>
+
+            <section id="mini-spends" class="sp-section mini-tab-panel" data-mini-tab-panel="spends" {{ currentTab != 'spends' ? 'hidden' : '' }}>
+                <h2>{{ 'spends.heading'|trans({'%month%': spendList.monthLabel}) }}</h2>
+                {% if spendList.spends is empty %}
+                    <div class="empty"><strong>{{ 'spends.empty'|trans }}</strong></div>
+                {% else %}
+                    <div class="dash-recent-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>{{ 'spends.table.spend_date'|trans }}</th>
+                                    <th>{{ 'common.user'|trans }}</th>
+                                    <th>{{ 'dashboard.table.amount'|trans }}</th>
+                                    <th>{{ 'dashboard.table.description'|trans }}</th>
+                                    <th>{{ 'common.actions'|trans }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for spend in spendList.spends %}
+                                    <tr>
+                                        <td>{{ spend.spendDateLabel }}</td>
+                                        <td>{{ spend.username }}</td>
+                                        <td>{{ spend.amount }} {{ spend.currencyCode }}</td>
+                                        <td>{{ spend.comment ?: ('common.na'|trans) }}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <a
+                                                    class="btn btn-ghost icon-only"
+                                                    href="{{ path('app_telegram_mini_spend_edit', {id: spend.id, token: token}) }}"
+                                                    title="{{ 'common.edit'|trans }}"
+                                                    aria-label="{{ 'common.edit'|trans }}"
+                                                >✎</a>
+                                                <form method="post" action="{{ path('app_telegram_mini_spend_delete', {id: spend.id, token: token}) }}" onsubmit="return confirm('{{ 'spend.confirm_delete'|trans }}');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_spend_' ~ spend.id) }}">
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-danger icon-only"
+                                                        title="{{ 'common.delete'|trans }}"
+                                                        aria-label="{{ 'common.delete'|trans }}"
+                                                    >🗑</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if spendList.totalPages > 1 %}
+                        <nav class="mini-pagination" aria-label="{{ 'spends.pagination'|trans }}">
+                            <a
+                                class="btn btn-ghost {{ spendList.page <= 1 ? 'is-disabled' : '' }}"
+                                href="{{ path('app_telegram_mini_spend', {token: token, tab: 'spends', month: spendList.selectedMonthKey, perPage: spendList.perPage, page: spendList.page - 1}) }}"
+                            >
+                                {{ 'common.prev'|trans }}
+                            </a>
+
+                            {% for pageNo in 1..spendList.totalPages %}
+                                <a
+                                    class="btn btn-ghost {{ pageNo == spendList.page ? 'is-active' : '' }}"
+                                    href="{{ path('app_telegram_mini_spend', {token: token, tab: 'spends', month: spendList.selectedMonthKey, perPage: spendList.perPage, page: pageNo}) }}"
+                                >
+                                    {{ pageNo }}
+                                </a>
+                            {% endfor %}
+
+                            <a
+                                class="btn btn-ghost {{ spendList.page >= spendList.totalPages ? 'is-disabled' : '' }}"
+                                href="{{ path('app_telegram_mini_spend', {token: token, tab: 'spends', month: spendList.selectedMonthKey, perPage: spendList.perPage, page: spendList.page + 1}) }}"
+                            >
+                                {{ 'common.next'|trans }}
+                            </a>
+                        </nav>
+                    {% endif %}
+                {% endif %}
+            </section>
+        </main>
+    </section>
+
+    <script>
+        window.dashboardSpendFormI18n = {
+            saving: {{ 'spend.js.saving'|trans|json_encode|raw }},
+            unableAdd: {{ 'spend.js.unable_add'|trans|json_encode|raw }},
+            networkError: {{ 'spend.js.network_error'|trans|json_encode|raw }},
+            addSpend: {{ 'dashboard.add_spend_button'|trans|json_encode|raw }},
+            adding: {{ 'spend.js.adding'|trans|json_encode|raw }},
+            added: {{ 'spend.js.added'|trans|json_encode|raw }},
+            saved: {{ 'spend.js.saved'|trans|json_encode|raw }},
+            noSpendsYet: {{ 'dashboard.no_spends_yet'|trans|json_encode|raw }},
+            na: {{ 'common.na'|trans|json_encode|raw }}
+        };
+    </script>
+    <script>
+        (function () {
+            const FEEDBACK_SUCCESS = "form-status-success";
+            const FEEDBACK_ERROR = "form-status-error";
+            const FEEDBACK_PENDING = "form-status-pending";
+            const SUCCESS_HINT_HIDE_MS = 3000;
+
+            function init() {
+                setupTabs();
+
+                const form = document.querySelector("[data-spend-form]");
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                const submitBtn = form.querySelector("[data-spend-submit]");
+                const feedback = document.querySelector("[data-spend-feedback]");
+                if (!(submitBtn instanceof HTMLButtonElement)) {
+                    return;
+                }
+
+                const i18n = window.dashboardSpendFormI18n || {};
+                const labels = {
+                    saving: typeof i18n.saving === "string" ? i18n.saving : "Saving spend...",
+                    unableAdd: typeof i18n.unableAdd === "string" ? i18n.unableAdd : "Unable to add spend.",
+                    networkError: typeof i18n.networkError === "string" ? i18n.networkError : "Network error while adding spend.",
+                    addSpend: typeof i18n.addSpend === "string" ? i18n.addSpend : "Add spend",
+                    adding: typeof i18n.adding === "string" ? i18n.adding : "Adding...",
+                    added: typeof i18n.added === "string" ? i18n.added : "Added ✓",
+                    noSpendsYet: typeof i18n.noSpendsYet === "string" ? i18n.noSpendsYet : "No spends yet.",
+                    na: typeof i18n.na === "string" ? i18n.na : "n/a"
+                };
+                const defaultLabel = (submitBtn.textContent || labels.addSpend).trim() || labels.addSpend;
+                let feedbackTimer = null;
+
+                form.addEventListener("keydown", function (event) {
+                    if (event.key !== "Enter") {
+                        return;
+                    }
+                    if (event.target instanceof HTMLTextAreaElement) {
+                        return;
+                    }
+                    event.preventDefault();
+                    if (form.dataset.pending === "1") {
+                        return;
+                    }
+                    submitBtn.click();
+                });
+
+                form.addEventListener("submit", async function (event) {
+                    event.preventDefault();
+                    if (form.dataset.pending === "1") {
+                        return;
+                    }
+
+                    form.dataset.pending = "1";
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = labels.adding;
+                    setFeedback(feedback, labels.saving, FEEDBACK_PENDING, 0);
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: "POST",
+                            headers: { "X-Requested-With": "XMLHttpRequest" },
+                            body: new FormData(form)
+                        });
+                        let data = {};
+                        try {
+                            data = await response.json();
+                        } catch (_e) {
+                            data = {};
+                        }
+
+                        if (!response.ok || !data.success) {
+                            setFeedback(feedback, data.error || labels.unableAdd, FEEDBACK_ERROR, 0);
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = defaultLabel;
+                            form.dataset.pending = "0";
+                            return;
+                        }
+
+                        applyDefaults(form, data.defaults || {});
+                        updateWidget(data.widget || null);
+                        form.classList.remove("is-success-submit");
+                        void form.offsetWidth;
+                        form.classList.add("is-success-submit");
+                        window.setTimeout(function () {
+                            form.classList.remove("is-success-submit");
+                        }, 820);
+
+                        setFeedback(feedback, data.message || labels.added, FEEDBACK_SUCCESS, SUCCESS_HINT_HIDE_MS);
+                        submitBtn.textContent = labels.added;
+                        window.setTimeout(function () {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = defaultLabel;
+                            form.dataset.pending = "0";
+                        }, 900);
+                    } catch (_error) {
+                        setFeedback(feedback, labels.networkError, FEEDBACK_ERROR, 0);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = defaultLabel;
+                        form.dataset.pending = "0";
+                    }
+                });
+
+                function setFeedback(node, text, cssClass, hideMs) {
+                    if (!(node instanceof HTMLElement)) {
+                        return;
+                    }
+
+                    if (feedbackTimer !== null) {
+                        window.clearTimeout(feedbackTimer);
+                        feedbackTimer = null;
+                    }
+
+                    node.hidden = false;
+                    node.textContent = text;
+                    node.classList.remove(FEEDBACK_SUCCESS, FEEDBACK_ERROR, FEEDBACK_PENDING);
+                    node.classList.add(cssClass);
+
+                    if (hideMs > 0) {
+                        feedbackTimer = window.setTimeout(function () {
+                            node.hidden = true;
+                            node.textContent = "";
+                            node.classList.remove(FEEDBACK_SUCCESS, FEEDBACK_ERROR, FEEDBACK_PENDING);
+                            feedbackTimer = null;
+                        }, hideMs);
+                    }
+                }
+            }
+
+            function setupTabs() {
+                const triggers = Array.from(document.querySelectorAll("[data-mini-tab-trigger]"));
+                const panels = Array.from(document.querySelectorAll("[data-mini-tab-panel]"));
+                if (triggers.length === 0 || panels.length === 0) {
+                    return;
+                }
+
+                function activate(tab) {
+                    triggers.forEach(function (node) {
+                        if (!(node instanceof HTMLElement)) {
+                            return;
+                        }
+                        const active = node.getAttribute("data-mini-tab-trigger") === tab;
+                        node.classList.toggle("is-active", active);
+                        node.setAttribute("aria-selected", active ? "true" : "false");
+                    });
+
+                    panels.forEach(function (node) {
+                        if (!(node instanceof HTMLElement)) {
+                            return;
+                        }
+                        const active = node.getAttribute("data-mini-tab-panel") === tab;
+                        node.hidden = !active;
+                    });
+                }
+
+                let defaultTab = "add";
+                if (window.location.hash === "#mini-spends") {
+                    defaultTab = "spends";
+                }
+                triggers.forEach(function (node) {
+                    if (!(node instanceof HTMLElement)) {
+                        return;
+                    }
+
+                    if (node.classList.contains("is-active")) {
+                        defaultTab = node.getAttribute("data-mini-tab-trigger") || defaultTab;
+                    }
+
+                    node.addEventListener("click", function () {
+                        const tab = node.getAttribute("data-mini-tab-trigger") || "add";
+                        activate(tab);
+                    });
+                });
+
+                activate(defaultTab);
+            }
+
+            function applyDefaults(form, defaults) {
+                form.reset();
+                setFieldValue(form, "amount", defaults.amount || "");
+                setFieldValue(form, "currency", defaults.currencyId || "");
+                setFieldValue(form, "spendingPlan", defaults.spendingPlanId || "");
+                setFieldValue(form, "spendDate", defaults.spendDate || "");
+                setFieldValue(form, "comment", defaults.comment || "");
+
+                const amountField = form.querySelector('[name$="[amount]"]');
+                if (amountField instanceof HTMLElement) {
+                    amountField.focus();
+                }
+            }
+
+            function setFieldValue(form, fieldName, value) {
+                const field = form.querySelector('[name$="[' + fieldName + ']"]');
+                if (
+                    field instanceof HTMLInputElement
+                    || field instanceof HTMLSelectElement
+                    || field instanceof HTMLTextAreaElement
+                ) {
+                    field.value = value;
+                }
+            }
+
+            function updateWidget(widget) {
+                if (!widget || typeof widget !== "object") {
+                    return;
+                }
+                const i18n = window.dashboardSpendFormI18n || {};
+                const noSpendsYet = typeof i18n.noSpendsYet === "string" ? i18n.noSpendsYet : "No spends yet.";
+                const na = typeof i18n.na === "string" ? i18n.na : "n/a";
+
+                const card = document.querySelector("[data-spend-widget]");
+                if (!(card instanceof HTMLElement)) {
+                    return;
+                }
+
+                const monthNode = card.querySelector("[data-spend-widget-month]");
+                if (monthNode instanceof HTMLElement && typeof widget.monthSpentGel === "string") {
+                    monthNode.textContent = widget.monthSpentGel + " GEL";
+                }
+
+                const limitNode = card.querySelector("[data-spend-widget-limit]");
+                if (limitNode instanceof HTMLElement && typeof widget.monthLimitGel === "string") {
+                    limitNode.textContent = widget.monthLimitGel + " GEL";
+                }
+
+                const progressTextNode = card.querySelector("[data-spend-widget-progress-text]");
+                if (progressTextNode instanceof HTMLElement && Number.isFinite(Number(widget.progressPercent))) {
+                    progressTextNode.textContent = Math.round(Number(widget.progressPercent)) + "%";
+                }
+
+                const progressBarNode = card.querySelector("[data-spend-widget-progress-bar]");
+                if (progressBarNode instanceof HTMLElement) {
+                    if (Number.isFinite(Number(widget.progressBarPercent))) {
+                        const width = Math.max(0, Math.min(100, Math.round(Number(widget.progressBarPercent))));
+                        progressBarNode.style.setProperty("--progress-target", width + "%");
+                        progressBarNode.style.width = width + "%";
+                    }
+                    const tone = typeof widget.progressTone === "string" ? widget.progressTone : "ok";
+                    progressBarNode.classList.remove("is-ok", "is-warning", "is-danger");
+                    progressBarNode.classList.add(tone === "warning" || tone === "danger" ? "is-" + tone : "is-ok");
+                }
+
+                const todayNode = card.querySelector("[data-spend-widget-today]");
+                if (todayNode instanceof HTMLElement && typeof widget.todaySpentGel === "string") {
+                    todayNode.textContent = widget.todaySpentGel + " GEL";
+                }
+
+                const recentTbody = card.querySelector("[data-spend-widget-recent]");
+                if (recentTbody instanceof HTMLElement && Array.isArray(widget.recentSpends)) {
+                    recentTbody.innerHTML = "";
+                    if (widget.recentSpends.length === 0) {
+                        const row = document.createElement("tr");
+                        const cell = document.createElement("td");
+                        cell.colSpan = 4;
+                        cell.textContent = noSpendsYet;
+                        row.appendChild(cell);
+                        recentTbody.appendChild(row);
+                    } else {
+                        widget.recentSpends.slice(0, 3).forEach(function (item) {
+                            const row = document.createElement("tr");
+
+                            const amountCell = document.createElement("td");
+                            amountCell.textContent = ((item.amount || "") + " " + (item.currencyCode || "")).trim();
+                            row.appendChild(amountCell);
+
+                            const datetimeCell = document.createElement("td");
+                            datetimeCell.textContent = typeof item.datetime === "string" ? item.datetime : "";
+                            row.appendChild(datetimeCell);
+
+                            const userCell = document.createElement("td");
+                            userCell.textContent = typeof item.username === "string" ? item.username : "";
+                            row.appendChild(userCell);
+
+                            const descriptionCell = document.createElement("td");
+                            const rawDescription = typeof item.description === "string" ? item.description.trim() : "";
+                            descriptionCell.textContent = rawDescription || na;
+                            row.appendChild(descriptionCell);
+
+                            recentTbody.appendChild(row);
+                        });
+                    }
+                }
+
+                card.classList.remove("is-live-updated");
+                void card.offsetWidth;
+                card.classList.add("is-live-updated");
+                window.setTimeout(function () {
+                    card.classList.remove("is-live-updated");
+                }, 820);
+            }
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", init, { once: true });
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>

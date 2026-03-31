@@ -5,55 +5,72 @@
 
 {% block body %}
     <main class="panel reveal">
-        <span class="kicker">{{ 'dashboard.kicker'|trans }}</span>
-        <h1>{{ 'dashboard.heading'|trans }}</h1>
-        <p>{{ 'dashboard.description'|trans }}</p>
+        <div class="dash-top-row">
+            <span class="kicker">{{ 'dashboard.kicker'|trans }}</span>
+            <div class="dash-rates-row reveal delay">
+                <span class="dash-rate-pill">{{ 'dashboard.eur_gel'|trans }}: <strong>{{ incomeWidget.eurGelRate ?? ('common.na'|trans) }}</strong></span>
+                <span class="dash-rate-pill">{{ 'dashboard.usdt_gel'|trans }}: <strong>{{ incomeWidget.usdtGelRate ?? ('common.na'|trans) }}</strong></span>
+            </div>
+        </div>
+{#        <h1>{{ 'dashboard.heading'|trans }}</h1>#}
+{#        <p>{{ 'dashboard.description'|trans }}</p>#}
 
-        <section class="grid metrics">
-            <article class="metric reveal delay">
-                <h3>{{ 'dashboard.last_income'|trans }}</h3>
-                {% if incomeWidget.lastIncome %}
-                    <p>
-                        {{ incomeWidget.lastIncome.amount }} {{ incomeWidget.lastIncome.currencyCode }}
-                        {% if incomeWidget.lastIncome.amountInGel %}
-                            ({{ incomeWidget.lastIncome.amountInGel }} GEL)
-                        {% endif %}
-                    </p>
-                    <p class="subtle">{{ incomeWidget.lastIncome.createdAtLabel }}</p>
-                    {% if incomeWidget.lastIncome.comment %}
-                        <p class="subtle">{{ incomeWidget.lastIncome.comment }}</p>
-                    {% endif %}
-                {% else %}
-                    <p>{{ 'dashboard.no_incomes'|trans }}</p>
-                {% endif %}
-            </article>
-
-            <article class="metric reveal delay">
-                <h3>{{ 'dashboard.income_for_month'|trans({'%month%': incomeWidget.monthLabel}) }}</h3>
-                <p>{{ 'dashboard.records'|trans({'%count%': incomeWidget.monthIncomeCount}) }}</p>
-                <p>{{ 'dashboard.total_converted'|trans({'%amount%': incomeWidget.monthIncomeAmountGel}) }}</p>
-                <div class="actions" style="margin-top: 8px;">
-                    <a class="btn btn-ghost" href="{{ path('app_dashboard_incomes') }}">
-                        {{ 'dashboard.open_incomes'|trans }}
-                    </a>
-                </div>
-            </article>
-
-            <article class="metric reveal delay spend-widget" data-spend-widget>
+        <section class="grid dashboard-double-grid">
+            <article class="metric reveal delay spend-widget dashboard-main-card" data-spend-widget>
                 <h3>{{ 'dashboard.spends_for_month'|trans({'%month%': spendWidget.monthLabel}) }}</h3>
-                <p data-spend-widget-count>{{ 'dashboard.records'|trans({'%count%': spendWidget.monthSpendCount}) }}</p>
-                <p>{{ 'dashboard.total'|trans }}: <span data-spend-widget-total>{{ spendWidget.monthSpendAmountLabel }}</span></p>
-                <p class="subtle" data-spend-widget-last>
-                    {% if spendWidget.lastSpend %}
-                        {{ 'dashboard.last_spend_value'|trans({
-                            '%amount%': spendWidget.lastSpend.amount,
-                            '%currency%': spendWidget.lastSpend.currencyCode,
-                            '%date%': spendWidget.lastSpend.spendDateLabel
-                        }) }}
-                    {% else %}
-                        {{ 'dashboard.last_spend_na'|trans }}
-                    {% endif %}
+                <div class="dash-progress-head">
+                    <div>
+                        <p class="subtle">{{ 'dashboard.month_spent'|trans }}</p>
+                        <p class="dash-big" data-spend-widget-month>{{ spendWidget.monthSpentGel }} GEL</p>
+                    </div>
+                    <div class="dash-progress-side">
+                        <p class="subtle">{{ 'dashboard.month_limit'|trans }}</p>
+                        <p class="dash-big" data-spend-widget-limit>{{ spendWidget.monthLimitGel }} GEL</p>
+                    </div>
+                </div>
+                <div class="dash-progress-track">
+                    <span
+                        class="dash-progress-fill is-{{ spendWidget.monthSpendProgressTone }}"
+                        style="--progress-target: {{ spendWidget.monthSpendProgressBarPercent }}%; width: {{ spendWidget.monthSpendProgressBarPercent }}%;"
+                        data-spend-widget-progress-bar
+                    ></span>
+                </div>
+                <p class="subtle">
+                    {{ 'dashboard.progress_to_limit'|trans }}:
+                    <strong data-spend-widget-progress-text>{{ spendWidget.monthSpendProgressPercent }}%</strong>
                 </p>
+
+                <div class="dash-today-row">
+                    <span>{{ 'dashboard.spends_today'|trans }}</span>
+                    <strong data-spend-widget-today>{{ spendWidget.todaySpentGel }} GEL</strong>
+                </div>
+
+                <div class="table-wrap dash-recent-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ 'dashboard.table.amount'|trans }}</th>
+                                <th>{{ 'dashboard.table.datetime'|trans }}</th>
+                                <th>{{ 'dashboard.table.user'|trans }}</th>
+                                <th>{{ 'dashboard.table.description'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody data-spend-widget-recent>
+                            {% for spend in spendWidget.recentSpends %}
+                                <tr>
+                                    <td>{{ spend.amount }} {{ spend.currencyCode }}</td>
+                                    <td>{{ spend.createdAtLabel }}</td>
+                                    <td>{{ spend.username }}</td>
+                                    <td>{{ spend.comment ?: ('common.na'|trans) }}</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4">{{ 'dashboard.no_spends_yet'|trans }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="actions" style="margin-top: 8px;">
                     <a class="btn btn-ghost" href="{{ path('app_dashboard_spends') }}">
                         {{ 'dashboard.open_spends'|trans }}
@@ -61,11 +78,25 @@
                 </div>
             </article>
 
-            <article class="metric reveal delay">
-                <h3>{{ 'dashboard.fx_snapshot'|trans }}</h3>
-                <p>{{ 'dashboard.eur_gel'|trans }}: {{ incomeWidget.eurGelRate ?? ('common.na'|trans) }}</p>
-                <p>{{ 'dashboard.usdt_gel'|trans }}: {{ incomeWidget.usdtGelRate ?? ('common.na'|trans) }}</p>
+            <article class="metric reveal delay dashboard-main-card">
+                <h3>{{ 'dashboard.income_for_month'|trans({'%month%': incomeWidget.monthLabel}) }}</h3>
+                <div class="dash-income-row">
+                    <span>{{ 'dashboard.total_income_gel'|trans }}</span>
+                    <strong>{{ incomeWidget.totalIncomeGel }} GEL</strong>
+                </div>
+                <div class="dash-income-row">
+                    <span>{{ 'dashboard.available_to_spend'|trans }}</span>
+                    <strong>{{ incomeWidget.availableToSpendGel }} GEL</strong>
+                </div>
+                <p class="subtle">
+                    {{ 'dashboard.regular_planned_total'|trans({'%amount%': incomeWidget.regularAndPlannedGel}) }}
+                </p>
                 <p class="subtle">{{ 'dashboard.updated'|trans }}: {{ incomeWidget.ratesUpdatedAtLabel ?? ('common.na'|trans) }}</p>
+                <div class="actions" style="margin-top: 8px;">
+                    <a class="btn btn-ghost" href="{{ path('app_dashboard_incomes') }}">
+                        {{ 'dashboard.open_incomes'|trans }}
+                    </a>
+                </div>
             </article>
         </section>
     </main>

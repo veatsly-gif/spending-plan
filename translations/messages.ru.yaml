@@ -83,6 +83,19 @@ dashboard:
   kicker: "Обзор"
   heading: "Дашборд домашней бухгалтерии"
   description: "Учет доходов, ежемесячные срезы и мониторинг курсов."
+  month_spent: "Потрачено в этом месяце"
+  month_limit: "Лимит месяца"
+  progress_to_limit: "Прогресс к лимиту"
+  spends_today: "Потрачено сегодня"
+  no_spends_yet: "Расходов пока нет."
+  total_income_gel: "Общий доход в GEL"
+  available_to_spend: "Доступно к тратам"
+  regular_planned_total: "Лимиты regular + planned: %amount% GEL"
+  table:
+    amount: "Сумма"
+    datetime: "Дата/время"
+    user: "Пользователь"
+    description: "Описание"
   last_income: "Последний доход"
   no_incomes: "Доходов пока нет."
   income_for_month: "Доход (%month%)"
@@ -137,8 +150,14 @@ spends:
     reset: "Сбросить фильтры"
 
 spend:
+  edit_title: "Редактировать расход"
+  edit_heading: "Редактировать расход №%id%"
+  confirm_delete: "Удалить этот расход?"
+  updated: "Расход обновлен."
+  deleted: "Расход удален."
   form_invalid: "Некорректные данные формы расхода."
   unable_create: "Не удалось создать расход."
+  unable_update: "Не удалось обновить расход."
   js:
     saving: "Сохраняем расход..."
     unable_add: "Не удалось добавить расход."
@@ -146,6 +165,18 @@ spend:
     adding: "Добавление..."
     added: "Добавлено ✓"
     saved: "Сохранено"
+
+telegram:
+  mini_spend:
+    title: "Telegram Mini App"
+    kicker: "Telegram"
+    heading: "Добавить расход"
+    description: "Быстро добавьте расход через мини-приложение Telegram."
+    spent_today: "Потрачено сегодня"
+    spent_month: "Потрачено в этом месяце"
+    add_block: "Добавить расход"
+    tab_add: "Добавить расход"
+    tab_spends: "Смотреть расходы"
 
 admin:
   dashboard:

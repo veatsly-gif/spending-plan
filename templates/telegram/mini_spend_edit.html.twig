@@ -1,0 +1,39 @@
+{% trans_default_domain 'messages' %}
+
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'spend.edit_title'|trans }}</title>
+    {% set cssAssetPath = asset('styles/app.css') ~ '?v=' ~ assetVersion %}
+    {% set cssHref = assetBaseHost is not empty ? assetBaseHost ~ cssAssetPath : cssAssetPath %}
+    <link rel="stylesheet" href="{{ cssHref }}">
+</head>
+<body>
+<section class="page">
+    <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
+        <span class="kicker">{{ 'telegram.mini_spend.kicker'|trans }}</span>
+        <div class="actions" style="justify-content: flex-end; margin-bottom: 8px;">
+            <a class="btn btn-ghost" href="{{ path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}) }}">EN</a>
+            <a class="btn btn-ghost" href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}">RU</a>
+        </div>
+        <h1>{{ 'spend.edit_heading'|trans({'%id%': spend.id}) }}</h1>
+        <div class="actions" style="margin-bottom: 8px;">
+            <a class="btn btn-ghost" href="{{ path('app_telegram_mini_spend', {token: token}) }}">{{ 'common.back'|trans }}</a>
+        </div>
+
+        {{ form_start(spendForm) }}
+            {{ form_row(spendForm.amount) }}
+            {{ form_row(spendForm.currency) }}
+            {{ form_row(spendForm.spendingPlan) }}
+            {{ form_row(spendForm.spendDate) }}
+            {{ form_row(spendForm.comment) }}
+            <div class="actions">
+                <button type="submit">{{ 'common.save'|trans }}</button>
+            </div>
+        {{ form_end(spendForm) }}
+    </main>
+</section>
+</body>
+</html>

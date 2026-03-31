@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'spend.edit_title'|trans }}{% endblock %}
+
+{% block body %}
+    <main class="panel reveal" style="max-width: 760px;">
+        <span class="kicker">{{ 'dashboard.spend'|trans }}</span>
+        <h1>{{ 'spend.edit_heading'|trans({'%id%': spend.id}) }}</h1>
+
+        {{ form_start(form) }}
+            {{ form_row(form.amount) }}
+            {{ form_row(form.currency) }}
+            {{ form_row(form.spendingPlan) }}
+            {{ form_row(form.spendDate) }}
+            {{ form_row(form.comment) }}
+            <div class="actions">
+                <button type="submit">{{ 'common.save'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('app_dashboard_spends', {month: spend.spendDate|date('Y-m')}) }}">
+                    {{ 'common.back'|trans }}
+                </a>
+            </div>
+        {{ form_end(form) }}
+    </main>
+{% endblock %}

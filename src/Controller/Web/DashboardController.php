@@ -7,6 +7,7 @@ namespace App\Controller\Web;
 use App\Entity\User;
 use App\Form\Web\DashboardIncomeType;
 use App\Form\Web\DashboardSpendType;
+use App\Repository\SpendRepository;
 use App\Service\Controller\Web\DashboardControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -15,12 +16,15 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[IsGranted('ROLE_USER')]
 final class DashboardController extends AbstractController
 {
     public function __construct(
         private readonly DashboardControllerService $service,
+        private readonly SpendRepository $spendRepository,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -129,7 +133,7 @@ final class DashboardController extends AbstractController
             if ($request->isXmlHttpRequest()) {
                 return new JsonResponse([
                     'success' => false,
-                    'error' => $this->collectFirstFormError($form) ?? $this->trans('spend.form_invalid'),
+                    'error' => $this->collectFirstFormError($form) ?? $this->translator->trans('spend.form_invalid'),
                 ], 422);
             }
 
@@ -143,7 +147,7 @@ final class DashboardController extends AbstractController
             if ($request->isXmlHttpRequest()) {
                 return new JsonResponse([
                     'success' => false,
-                    'error' => $result->errorMessage ?? $this->trans('spend.unable_create'),
+                    'error' => $result->errorMessage ?? $this->translator->trans('spend.unable_create'),
                 ], 422);
             }
 
@@ -156,11 +160,10 @@ final class DashboardController extends AbstractController
             $defaultDraft = $this->service->createSpendDraft(new \DateTimeImmutable());
             $viewData = $this->service->buildViewData($user, new \DateTimeImmutable());
             $spendWidget = $viewData->spendWidget;
-            $lastSpend = $spendWidget->lastSpend;
 
             return new JsonResponse([
                 'success' => true,
-                'message' => $this->trans('flash.spend_added'),
+                'message' => $this->translator->trans('flash.spend_added'),
                 'defaults' => [
                     'amount' => '',
                     'currencyId' => (string) ($defaultDraft->getCurrency()?->getId() ?? ''),
@@ -169,15 +172,22 @@ final class DashboardController extends AbstractController
                     'comment' => '',
                 ],
                 'widget' => [
-                    'count' => $spendWidget->monthSpendCount,
-                    'total' => $spendWidget->monthSpendAmountLabel,
-                    'lastLabel' => null !== $lastSpend
-                        ? $this->trans('dashboard.last_spend_value', [
-                            '%amount%' => $lastSpend->amount,
-                            '%currency%' => $lastSpend->currencyCode,
-                            '%date%' => $lastSpend->spendDateLabel,
-                        ])
-                        : $this->trans('dashboard.last_spend_na'),
+                    'monthSpentGel' => $spendWidget->monthSpentGel,
+                    'monthLimitGel' => $spendWidget->monthLimitGel,
+                    'progressPercent' => $spendWidget->monthSpendProgressPercent,
+                    'progressBarPercent' => $spendWidget->monthSpendProgressBarPercent,
+                    'progressTone' => $spendWidget->monthSpendProgressTone,
+                    'todaySpentGel' => $spendWidget->todaySpentGel,
+                    'recentSpends' => array_map(
+                        static fn (\App\DTO\Controller\Web\DashboardSpendItemDto $item): array => [
+                            'amount' => $item->amount,
+                            'currencyCode' => $item->currencyCode,
+                            'datetime' => $item->createdAtLabel,
+                            'username' => $item->username,
+                            'description' => trim((string) $item->comment),
+                        ],
+                        $spendWidget->recentSpends
+                    ),
                 ],
             ]);
         }
@@ -185,6 +195,60 @@ final class DashboardController extends AbstractController
         $this->addFlash('success', 'flash.spend_added');
 
         return $this->redirectToRoute('app_dashboard');
+    }
+
+    #[Route('/dashboard/spends/{id}/edit', name: 'app_dashboard_spends_edit', methods: ['GET', 'POST'])]
+    public function editSpend(int $id, Request $request): Response
+    {
+        $spend = $this->spendRepository->find($id);
+        if (!$spend instanceof \App\Entity\Spend) {
+            throw $this->createNotFoundException('Spend not found.');
+        }
+
+        $draft = $this->service->createSpendDraftFromSpend($spend);
+        $form = $this->createForm(DashboardSpendType::class, $draft, [
+            'spending_plan_choices' => $this->service->getSpendPlanChoicesForDate($draft->getSpendDate()),
+        ]);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $result = $this->service->updateSpend($spend, $draft);
+            if ($result->success) {
+                $this->addFlash('success', 'spend.updated');
+
+                return $this->redirectToRoute('app_dashboard_spends', [
+                    'month' => $spend->getSpendDate()->format('Y-m'),
+                ]);
+            }
+
+            $this->addFlash('error', $result->errorMessage ?? 'spend.unable_update');
+        }
+
+        return $this->render('dashboard/spend_edit.html.twig', [
+            'form' => $form->createView(),
+            'spend' => $spend,
+        ]);
+    }
+
+    #[Route('/dashboard/spends/{id}/delete', name: 'app_dashboard_spends_delete', methods: ['POST'])]
+    public function deleteSpend(int $id, Request $request): Response
+    {
+        $spend = $this->spendRepository->find($id);
+        if (!$spend instanceof \App\Entity\Spend) {
+            throw $this->createNotFoundException('Spend not found.');
+        }
+
+        if (!$this->isCsrfTokenValid('delete_spend_'.$spend->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+        } else {
+            $month = $spend->getSpendDate()->format('Y-m');
+            $this->spendRepository->remove($spend, true);
+            $this->addFlash('success', 'spend.deleted');
+
+            return $this->redirectToRoute('app_dashboard_spends', ['month' => $month]);
+        }
+
+        return $this->redirectToRoute('app_dashboard_spends');
     }
 
     private function collectFirstFormError(FormInterface $form): ?string

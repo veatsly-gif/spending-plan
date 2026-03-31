@@ -24,6 +24,11 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
                 BaseUsersFixture::class,
                 BaseIncomesFixture::class,
             ],
+            'testDashboardIncomeTotalsAreSharedForAllUsers' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
             'testIncomesPageShowsIncomeList' => [
                 BaseCurrenciesFixture::class,
                 BaseUsersFixture::class,
@@ -94,7 +99,7 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
         $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
         $crawler = $this->client->request('GET', '/dashboard');
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('2 records', $crawler->text(''));
+        self::assertStringContainsString('Total income in GEL', $crawler->text(''));
         self::assertGreaterThan(
             0,
             $crawler->filter('a[href="/dashboard/incomes"]')->count()
@@ -107,5 +112,20 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
         $crawler = $this->client->request('GET', '/dashboard/incomes');
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Base EUR income', $crawler->text(''));
+    }
+
+    public function testDashboardIncomeTotalsAreSharedForAllUsers(): void
+    {
+        $redisStore = static::getContainer()->get(RedisStore::class);
+        $redisStore->set('income:rates:live', (string) json_encode([
+            'eurGel' => '3.000000',
+            'usdtGel' => '2.700000',
+            'updatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+        ], JSON_THROW_ON_ERROR));
+
+        $this->loginAs(BaseUsersFixture::ADMIN_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('250.00 GEL', $crawler->text(''));
     }
 }

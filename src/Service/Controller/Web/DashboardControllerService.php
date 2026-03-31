@@ -53,48 +53,89 @@ final class DashboardControllerService
     {
         $isIncomer = $this->hasRole($user, 'ROLE_INCOMER');
         $monthStart = $now->modify('first day of this month')->setTime(0, 0);
-        $monthIncomes = $this->incomeRepository->findForMonth($monthStart);
-        $lastIncome = $this->incomeRepository->findLast();
-        $rates = $this->incomeRateService->getLiveRates();
+        $monthEnd = $monthStart->modify('last day of this month')->setTime(0, 0);
+        $today = $now->setTime(0, 0);
+        $liveRates = $this->incomeRateService->getLiveGelRates() ?? [];
 
-        $totalGel = 0.0;
+        $monthIncomes = $this->incomeRepository->findForMonth($monthStart);
+        $ratesSnapshot = $this->incomeRateService->getLiveRates();
+        $monthSpends = $this->spendRepository->findForMonth($monthStart);
+        $monthPlans = $this->spendingPlanRepository->findForMonth($monthStart, $monthEnd);
+
+        $totalIncomeGel = 0.0;
         foreach ($monthIncomes as $income) {
-            if (null !== $income->getAmountInGel()) {
-                $totalGel += (float) $income->getAmountInGel();
+            $converted = $this->convertToGel((float) $income->getAmount(), (string) $income->getCurrency()?->getCode(), $liveRates);
+            if (null !== $converted) {
+                $totalIncomeGel += $converted;
             }
         }
 
-        $monthSpends = $this->spendRepository->findForMonth($monthStart);
-        $lastSpend = $this->spendRepository->findLast();
-        $monthSpendTotals = [];
+        $monthSpentGel = 0.0;
+        $todaySpentGel = 0.0;
         foreach ($monthSpends as $spend) {
-            $currencyCode = (string) $spend->getCurrency()?->getCode();
-            if ('' === $currencyCode) {
+            $converted = $this->convertToGel((float) $spend->getAmount(), (string) $spend->getCurrency()?->getCode(), $liveRates);
+            if (null === $converted) {
                 continue;
             }
 
-            if (!isset($monthSpendTotals[$currencyCode])) {
-                $monthSpendTotals[$currencyCode] = 0.0;
+            $monthSpentGel += $converted;
+            if ($spend->getSpendDate() == $today) {
+                $todaySpentGel += $converted;
             }
-            $monthSpendTotals[$currencyCode] += (float) $spend->getAmount();
         }
+
+        $monthLimitGel = 0.0;
+        $regularAndPlannedGel = 0.0;
+        foreach ($monthPlans as $plan) {
+            $converted = $this->convertToGel((float) $plan->getLimitAmount(), (string) $plan->getCurrency()?->getCode(), $liveRates);
+            if (null === $converted) {
+                continue;
+            }
+
+            $monthLimitGel += $converted;
+            if (in_array($plan->getPlanType(), [SpendingPlan::PLAN_TYPE_REGULAR, SpendingPlan::PLAN_TYPE_PLANNED], true)) {
+                $regularAndPlannedGel += $converted;
+            }
+        }
+
+        $progressPercent = 0;
+        if ($monthLimitGel > 0) {
+            $progressPercent = (int) round(($monthSpentGel / $monthLimitGel) * 100);
+        } elseif ($monthSpentGel > 0) {
+            $progressPercent = 100;
+        }
+
+        $progressBarPercent = max(0, min(100, $progressPercent));
+        $progressTone = 'ok';
+        if ($progressPercent > 90) {
+            $progressTone = 'danger';
+        } elseif ($progressPercent > 80) {
+            $progressTone = 'warning';
+        }
+
+        $recentSpends = array_slice($monthSpends, 0, 3);
+        $recentSpendItems = array_map(fn (Spend $spend): DashboardSpendItemDto => $this->mapSpend($spend), $recentSpends);
 
         return new DashboardPageViewDto(
             $isIncomer,
             new DashboardIncomeWidgetDto(
-                null !== $lastIncome ? $this->mapIncome($lastIncome) : null,
                 $monthStart->format('F Y'),
-                count($monthIncomes),
-                number_format($totalGel, 2, '.', ''),
-                $rates?->eurGel,
-                $rates?->usdtGel,
-                null !== $rates ? $rates->updatedAt->format('Y-m-d H:i') : null,
+                number_format($totalIncomeGel, 2, '.', ''),
+                number_format($regularAndPlannedGel, 2, '.', ''),
+                number_format($totalIncomeGel - $regularAndPlannedGel, 2, '.', ''),
+                $ratesSnapshot?->eurGel,
+                $ratesSnapshot?->usdtGel,
+                null !== $ratesSnapshot ? $ratesSnapshot->updatedAt->format('Y-m-d H:i') : null,
             ),
             new DashboardSpendWidgetDto(
-                null !== $lastSpend ? $this->mapSpend($lastSpend) : null,
                 $monthStart->format('F Y'),
-                count($monthSpends),
-                $this->formatCurrencyTotals($monthSpendTotals),
+                number_format($monthSpentGel, 2, '.', ''),
+                number_format($monthLimitGel, 2, '.', ''),
+                $progressPercent,
+                $progressBarPercent,
+                $progressTone,
+                number_format($todaySpentGel, 2, '.', ''),
+                $recentSpendItems,
             )
         );
     }
@@ -282,6 +323,19 @@ final class DashboardControllerService
         return $draft;
     }
 
+    public function createSpendDraftFromSpend(Spend $spend): DashboardSpendDraftDto
+    {
+        $draft = new DashboardSpendDraftDto();
+        $draft
+            ->setAmount($spend->getAmount())
+            ->setCurrency($spend->getCurrency())
+            ->setSpendingPlan($spend->getSpendingPlan())
+            ->setSpendDate($spend->getSpendDate())
+            ->setComment($spend->getComment());
+
+        return $draft;
+    }
+
     /**
      * @return list<SpendingPlan>
      */
@@ -376,6 +430,40 @@ final class DashboardControllerService
         return new SpendCreateResultDto(true);
     }
 
+    public function updateSpend(Spend $spend, DashboardSpendDraftDto $draft): SpendCreateResultDto
+    {
+        $amount = $draft->getAmount();
+        if (!is_numeric($amount) || (float) $amount < 0) {
+            return new SpendCreateResultDto(false, 'Amount must be a positive number.');
+        }
+
+        $currency = $draft->getCurrency();
+        if (null === $currency) {
+            return new SpendCreateResultDto(false, 'Currency is required.');
+        }
+
+        $spendingPlan = $draft->getSpendingPlan();
+        if (null === $spendingPlan) {
+            return new SpendCreateResultDto(false, 'Spending plan is required.');
+        }
+
+        $spendDate = $draft->getSpendDate()->setTime(0, 0);
+        if ($spendDate < $spendingPlan->getDateFrom() || $spendDate > $spendingPlan->getDateTo()) {
+            return new SpendCreateResultDto(false, 'Spend date must be inside selected spending plan period.');
+        }
+
+        $spend
+            ->setAmount(number_format((float) $amount, 2, '.', ''))
+            ->setCurrency($currency)
+            ->setSpendingPlan($spendingPlan)
+            ->setSpendDate($spendDate)
+            ->setComment($draft->getComment());
+
+        $this->spendRepository->save($spend, true);
+
+        return new SpendCreateResultDto(true);
+    }
+
     private function hasRole(User $user, string $role): bool
     {
         return in_array($role, $user->getRoles(), true);
@@ -408,6 +496,28 @@ final class DashboardControllerService
             $spend->getComment(),
             $spend->getCreatedAt()->format('Y-m-d H:i')
         );
+    }
+
+    /**
+     * @param array<string, string> $liveRates
+     */
+    private function convertToGel(float $amount, string $currencyCode, array $liveRates): ?float
+    {
+        $code = strtoupper(trim($currencyCode));
+        if ('' === $code) {
+            return null;
+        }
+
+        if ('GEL' === $code) {
+            return $amount;
+        }
+
+        $rate = $liveRates[$code] ?? null;
+        if (null === $rate || !is_numeric($rate)) {
+            return null;
+        }
+
+        return $amount * (float) $rate;
     }
 
     /**

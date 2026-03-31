@@ -7,12 +7,15 @@ namespace App\Service;
 use App\Entity\TelegramUser;
 use App\Repository\TelegramUserRepository;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class TelegramUpdateProcessor
 {
     public function __construct(
         private readonly TelegramUserRepository $telegramUserRepository,
         private readonly TelegramBotService $telegramBotService,
+        private readonly TelegramMiniAppTokenService $miniAppTokenService,
+        private readonly UrlGeneratorInterface $urlGenerator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -46,9 +49,13 @@ final class TelegramUpdateProcessor
 
         if (null !== $telegramUser && TelegramUser::STATUS_AUTHORIZED === $telegramUser->getStatus()) {
             $this->logger->info('Telegram user is authorized.', ['telegram_id' => $telegramId]);
-            $this->telegramBotService->sendMessage(
+
+            $miniAppUrl = $this->buildMiniAppUrl($telegramId);
+            $this->telegramBotService->sendMessageWithWebAppButton(
                 $replyChatId,
-                'You are already registered. Please wait for a coming functionality'
+                '👇',
+                'Add spend',
+                $miniAppUrl,
             );
 
             return;
@@ -107,5 +114,69 @@ final class TelegramUpdateProcessor
             $replyChatId,
             'For registration type /reg'
         );
+    }
+
+    private function buildMiniAppUrl(string $telegramId): string
+    {
+        $token = $this->miniAppTokenService->generateToken($telegramId);
+
+        $absoluteUrl = $this->urlGenerator->generate(
+            'app_telegram_mini_spend',
+            ['token' => $token],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        if (!$this->needsPublicHostOverride($absoluteUrl)) {
+            return $absoluteUrl;
+        }
+
+        $publicHost = $this->resolveTelegramPublicHost();
+        if ('' === $publicHost) {
+            return $absoluteUrl;
+        }
+
+        $path = (string) parse_url($absoluteUrl, PHP_URL_PATH);
+        $query = (string) parse_url($absoluteUrl, PHP_URL_QUERY);
+
+        return $publicHost.$path.('' !== $query ? '?'.$query : '');
+    }
+
+    private function resolveTelegramPublicHost(): string
+    {
+        $raw = (string) (
+            $_ENV['TELEGRAM_PUBLIC_HOST']
+            ?? $_SERVER['TELEGRAM_PUBLIC_HOST']
+            ?? getenv('TELEGRAM_PUBLIC_HOST')
+            ?: ''
+        );
+        $host = rtrim(trim($raw), '/');
+        if ('' === $host) {
+            return '';
+        }
+
+        if (!str_starts_with($host, 'http://') && !str_starts_with($host, 'https://')) {
+            $host = 'https://'.$host;
+        }
+
+        if (str_starts_with($host, 'http://')) {
+            $host = 'https://'.substr($host, 7);
+        }
+
+        return $host;
+    }
+
+    private function needsPublicHostOverride(string $absoluteUrl): bool
+    {
+        $scheme = strtolower((string) parse_url($absoluteUrl, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($absoluteUrl, PHP_URL_HOST));
+        if ('https' !== $scheme) {
+            return true;
+        }
+
+        return '' === $host
+            || 'localhost' === $host
+            || '127.0.0.1' === $host
+            || '0.0.0.0' === $host
+            || str_ends_with($host, '.localhost');
     }
 }

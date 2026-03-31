@@ -18,6 +18,41 @@ final class TelegramBotService
 
     public function sendMessage(string $telegramId, string $text): void
     {
+        $this->sendPayload([
+            'chat_id' => $telegramId,
+            'text' => $text,
+        ]);
+    }
+
+    public function sendMessageWithWebAppButton(
+        string $telegramId,
+        string $text,
+        string $buttonText,
+        string $webAppUrl,
+    ): void {
+        $this->sendPayload([
+            'chat_id' => $telegramId,
+            'text' => $text,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => $buttonText,
+                            'web_app' => [
+                                'url' => $webAppUrl,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function sendPayload(array $payload): void
+    {
         $token = trim((string) $this->botToken);
         if ('' === $token) {
             $this->logger->warning('Telegram send skipped: bot token is empty.');
@@ -25,30 +60,32 @@ final class TelegramBotService
         }
 
         $response = $this->httpClient->request('POST', sprintf('https://api.telegram.org/bot%s/sendMessage', $token), [
-            'json' => [
-                'chat_id' => $telegramId,
-                'text' => $text,
-            ],
+            'json' => $payload,
         ]);
 
         // Force request execution and surface API/network issues during webhook handling.
         $statusCode = $response->getStatusCode();
-        $payload = $response->toArray(false);
-        if (!isset($payload['ok']) || true !== $payload['ok']) {
-            $this->logger->error('Telegram send failed.', [
-                'chat_id' => $telegramId,
+        $responsePayload = $response->toArray(false);
+        if (!isset($responsePayload['ok']) || true !== $responsePayload['ok']) {
+            $description = is_string($responsePayload['description'] ?? null)
+                ? $responsePayload['description']
+                : sprintf('Unexpected Telegram API response (HTTP %d).', $statusCode);
+
+            $this->logger->error(sprintf('Telegram send failed: %s', $description), [
+                'chat_id' => $payload['chat_id'] ?? null,
                 'status_code' => $statusCode,
-                'payload' => $payload,
+                'payload' => $responsePayload,
+                'request_payload' => $payload,
             ]);
 
-            throw new \RuntimeException('Telegram API sendMessage failed.');
+            throw new \RuntimeException(sprintf('Telegram API sendMessage failed: %s', $description));
         }
 
         $this->logger->info('Telegram send attempted.', [
-            'chat_id' => $telegramId,
+            'chat_id' => $payload['chat_id'] ?? null,
             'status_code' => $statusCode,
-            'text' => $text,
-            'payload' => $payload,
+            'text' => $payload['text'] ?? null,
+            'payload' => $responsePayload,
         ]);
     }
 }

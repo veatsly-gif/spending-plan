@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Spend;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -76,6 +77,30 @@ class SpendRepository extends ServiceEntityRepository
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * @return list<Spend>
+     */
+    public function findForUserInPeriod(
+        User $user,
+        \DateTimeImmutable $fromDate,
+        \DateTimeImmutable $toDate,
+    ): array {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.currency', 'currency')
+            ->addSelect('currency')
+            ->andWhere('s.userAdded = :user')
+            ->andWhere('s.spendDate >= :from')
+            ->andWhere('s.spendDate <= :to')
+            ->setParameter('user', $user)
+            ->setParameter('from', $fromDate->setTime(0, 0))
+            ->setParameter('to', $toDate->setTime(0, 0))
+            ->orderBy('s.spendDate', 'DESC')
+            ->addOrderBy('s.createdAt', 'DESC')
+            ->addOrderBy('s.id', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 
     /**

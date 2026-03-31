@@ -7,10 +7,15 @@ namespace App\DTO\Controller\Web;
 final readonly class DashboardSpendWidgetDto
 {
     public function __construct(
-        public ?DashboardSpendItemDto $lastSpend,
         public string $monthLabel,
-        public int $monthSpendCount,
-        public string $monthSpendAmountLabel,
+        public string $monthSpentGel,
+        public string $monthLimitGel,
+        public int $monthSpendProgressPercent,
+        public int $monthSpendProgressBarPercent,
+        public string $monthSpendProgressTone,
+        public string $todaySpentGel,
+        /** @var list<DashboardSpendItemDto> */
+        public array $recentSpends,
     ) {
     }
 }

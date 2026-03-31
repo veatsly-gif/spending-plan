@@ -83,6 +83,19 @@ dashboard:
   kicker: "Overview"
   heading: "Home Accounting Dashboard"
   description: "Income tracking, monthly snapshots, and exchange monitoring."
+  month_spent: "Spent this month"
+  month_limit: "Month limit"
+  progress_to_limit: "Progress to limit"
+  spends_today: "Spends today"
+  no_spends_yet: "No spends yet."
+  total_income_gel: "Total income in GEL"
+  available_to_spend: "Available to spend"
+  regular_planned_total: "Regular + planned limits: %amount% GEL"
+  table:
+    amount: "Amount"
+    datetime: "DateTime"
+    user: "User"
+    description: "Description"
   last_income: "Last Income"
   no_incomes: "No incomes yet."
   income_for_month: "Income (%month%)"
@@ -137,8 +150,14 @@ spends:
     reset: "Reset filters"
 
 spend:
+  edit_title: "Edit spend"
+  edit_heading: "Edit spend #%id%"
+  confirm_delete: "Delete this spend?"
+  updated: "Spend updated."
+  deleted: "Spend deleted."
   form_invalid: "Invalid spend form data."
   unable_create: "Unable to create spend."
+  unable_update: "Unable to update spend."
   js:
     saving: "Saving spend..."
     unable_add: "Unable to add spend."
@@ -146,6 +165,18 @@ spend:
     adding: "Adding..."
     added: "Added ✓"
     saved: "Saved"
+
+telegram:
+  mini_spend:
+    title: "Telegram Mini App"
+    kicker: "Telegram"
+    heading: "Add Spend"
+    description: "Quickly add a spend from Telegram mini-app."
+    spent_today: "Spent today"
+    spent_month: "Spent this month"
+    add_block: "Add spend"
+    tab_add: "Add spend"
+    tab_spends: "See spends"
 
 admin:
   dashboard:
