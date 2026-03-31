@@ -25,6 +25,11 @@ final class RedisDataDictionary
             'type' => RedisDataType::JSON->value,
             'defaultTtlSeconds' => 0,
         ],
+        RedisDataKey::TELEGRAM_CONVERSATION_STATE->value => [
+            'template' => 'sp:telegram:conversation:{telegramId}',
+            'type' => RedisDataType::JSON->value,
+            'defaultTtlSeconds' => 1800,
+        ],
         RedisDataKey::ADMIN_DAILY_POPUP_QUEUE->value => [
             'template' => 'sp:notification:popup:admin:{adminId}:{date}',
             'type' => RedisDataType::JSON->value,

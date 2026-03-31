@@ -4,17 +4,26 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\Translation\DeepLTranslationResultDto;
 use App\Entity\TelegramUser;
 use App\Repository\TelegramUserRepository;
+use App\Service\Notification\NotificationActionService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class TelegramUpdateProcessor
 {
+    private const BUTTON_GEO_TO_RUSSIAN = 'Geo to russian';
+    private const CALLBACK_GEO_TO_RUSSIAN = 'geo_to_russian:start';
+
     public function __construct(
         private readonly TelegramUserRepository $telegramUserRepository,
         private readonly TelegramBotService $telegramBotService,
+        private readonly NotificationActionService $notificationActionService,
         private readonly TelegramMiniAppTokenService $miniAppTokenService,
+        private readonly TelegramConversationStateService $conversationStateService,
+        private readonly GeorgianTextNormalizer $georgianTextNormalizer,
+        private readonly DeepLTranslationService $deepLTranslationService,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly LoggerInterface $logger,
     ) {
@@ -25,6 +34,13 @@ final class TelegramUpdateProcessor
      */
     public function process(array $update): void
     {
+        $callbackQuery = $update['callback_query'] ?? null;
+        if (is_array($callbackQuery)) {
+            $this->processCallbackQuery($callbackQuery);
+
+            return;
+        }
+
         $message = $update['message'] ?? null;
         if (!is_array($message)) {
             return;
@@ -50,13 +66,30 @@ final class TelegramUpdateProcessor
         if (null !== $telegramUser && TelegramUser::STATUS_AUTHORIZED === $telegramUser->getStatus()) {
             $this->logger->info('Telegram user is authorized.', ['telegram_id' => $telegramId]);
 
-            $miniAppUrl = $this->buildMiniAppUrl($telegramId);
-            $this->telegramBotService->sendMessageWithWebAppButton(
-                $replyChatId,
-                '👇',
-                'Add spend',
-                $miniAppUrl,
-            );
+            if ($this->conversationStateService->isGeoToRussianPending($telegramId)) {
+                if ('/cancel' === $command) {
+                    $this->conversationStateService->clear($telegramId);
+                    $this->telegramBotService->sendMessage($replyChatId, 'Translation cancelled.');
+                    $this->sendAuthorizedMenu($replyChatId, $telegramId);
+
+                    return;
+                }
+
+                if (str_starts_with($command, '/')) {
+                    $this->telegramBotService->sendMessage(
+                        $replyChatId,
+                        'Translation mode is active. Send Georgian text or send /cancel.'
+                    );
+
+                    return;
+                }
+
+                $this->handleGeoToRussianInput($replyChatId, $telegramId, $text);
+
+                return;
+            }
+
+            $this->sendAuthorizedMenu($replyChatId, $telegramId);
 
             return;
         }
@@ -113,6 +146,216 @@ final class TelegramUpdateProcessor
         $this->telegramBotService->sendMessage(
             $replyChatId,
             'For registration type /reg'
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $callbackQuery
+     */
+    private function processCallbackQuery(array $callbackQuery): void
+    {
+        $callbackQueryId = isset($callbackQuery['id']) ? (string) $callbackQuery['id'] : '';
+        if ('' === trim($callbackQueryId)) {
+            return;
+        }
+
+        $from = $callbackQuery['from'] ?? null;
+        if (!is_array($from) || !isset($from['id'])) {
+            return;
+        }
+
+        $telegramId = (string) $from['id'];
+        $callbackData = trim((string) ($callbackQuery['data'] ?? ''));
+        $chatId = $this->resolveCallbackChatId($callbackQuery, $telegramId);
+
+        if (self::CALLBACK_GEO_TO_RUSSIAN === $callbackData) {
+            $telegramUser = $this->telegramUserRepository->findOneBy(['telegramId' => $telegramId]);
+            if (!$telegramUser instanceof TelegramUser || TelegramUser::STATUS_AUTHORIZED !== $telegramUser->getStatus()) {
+                $this->telegramBotService->answerCallbackQuery($callbackQueryId, 'Action is unavailable.');
+
+                return;
+            }
+
+            $this->conversationStateService->startGeoToRussian($telegramId);
+            $this->telegramBotService->answerCallbackQuery($callbackQueryId, 'Send Georgian text.');
+            $this->telegramBotService->sendMessage(
+                $chatId,
+                'Send Georgian text. If you use Latin letters, I will convert them to Georgian first.'
+            );
+
+            return;
+        }
+
+        $parsed = $this->notificationActionService
+            ->parseTelegramCallbackData($callbackData);
+        if (null === $parsed) {
+            $this->telegramBotService->answerCallbackQuery($callbackQueryId, 'Action is unavailable.');
+
+            return;
+        }
+
+        $telegramUser = $this->telegramUserRepository->findOneBy(['telegramId' => $telegramId]);
+        if (
+            !$telegramUser instanceof TelegramUser
+            || TelegramUser::STATUS_AUTHORIZED !== $telegramUser->getStatus()
+            || null === $telegramUser->getUser()
+        ) {
+            $this->telegramBotService->answerCallbackQuery($callbackQueryId, 'Action is unavailable.');
+
+            return;
+        }
+
+        $applied = $this->notificationActionService->applyAction(
+            $telegramUser->getUser(),
+            $parsed['templateCode'],
+            $parsed['monthKey'],
+            $parsed['actionCode'],
+            new \DateTimeImmutable(),
+        );
+
+        if (!$applied) {
+            $this->telegramBotService->answerCallbackQuery($callbackQueryId, 'Action is unavailable.');
+
+            return;
+        }
+
+        $message = NotificationActionService::ACTION_DONE === $parsed['actionCode']
+            ? 'Saved. No more reminders this month.'
+            : 'Okay. I will remind you tomorrow.';
+
+        $this->telegramBotService->answerCallbackQuery($callbackQueryId, $message);
+    }
+
+    private function sendAuthorizedMenu(string $replyChatId, string $telegramId): void
+    {
+        $miniAppUrl = $this->buildMiniAppUrl($telegramId);
+        $this->telegramBotService->sendMessageWithInlineKeyboard(
+            $replyChatId,
+            '👇',
+            [
+                [
+                    [
+                        'label' => 'Add spend',
+                        'web_app_url' => $miniAppUrl,
+                    ],
+                ],
+                [
+                    [
+                        'label' => self::BUTTON_GEO_TO_RUSSIAN,
+                        'callback_data' => self::CALLBACK_GEO_TO_RUSSIAN,
+                    ],
+                ],
+            ],
+        );
+    }
+
+    private function handleGeoToRussianInput(string $replyChatId, string $telegramId, string $text): void
+    {
+        $normalized = $this->georgianTextNormalizer->normalize($text);
+        if (!$normalized->supported) {
+            $this->telegramBotService->sendMessage(
+                $replyChatId,
+                'I can translate only Georgian text (Mkhedruli) or Georgian text typed with Latin letters. Try again or send /cancel.'
+            );
+
+            return;
+        }
+
+        $translationResult = $this->deepLTranslationService
+            ->translateGeorgianToRussian($normalized->normalizedText);
+
+        if (!$translationResult->success || null === $translationResult->translatedText) {
+            $this->handleTranslationFailure($replyChatId, $telegramId, $translationResult);
+
+            return;
+        }
+
+        $this->conversationStateService->clear($telegramId);
+
+        $prefix = $normalized->converted ? "Converted to Mkhedruli:\n".$normalized->normalizedText."\n\n" : '';
+        $usageInfo = $this->formatUsageInfo($translationResult->usage);
+        $this->telegramBotService->sendMessage(
+            $replyChatId,
+            $prefix."Russian translation:\n".$translationResult->translatedText."\n\n".$usageInfo
+        );
+        $this->sendAuthorizedMenu($replyChatId, $telegramId);
+    }
+
+    private function handleTranslationFailure(
+        string $replyChatId,
+        string $telegramId,
+        DeepLTranslationResultDto $translationResult,
+    ): void {
+        $usageInfo = $this->formatUsageInfo($translationResult->usage);
+
+        if (DeepLTranslationResultDto::ERROR_LIMIT_CLOSE === $translationResult->errorCode
+            || DeepLTranslationResultDto::ERROR_QUOTA_EXCEEDED === $translationResult->errorCode
+        ) {
+            $this->conversationStateService->clear($telegramId);
+            $this->telegramBotService->sendMessage(
+                $replyChatId,
+                'DeepL limit is close to exhaustion, translation is temporarily disabled.'."\n\n".$usageInfo
+            );
+            $this->sendAuthorizedMenu($replyChatId, $telegramId);
+
+            return;
+        }
+
+        if (DeepLTranslationResultDto::ERROR_CONFIG === $translationResult->errorCode) {
+            $this->conversationStateService->clear($telegramId);
+            $this->telegramBotService->sendMessage(
+                $replyChatId,
+                'Translation is unavailable: DeepL API key is invalid or not configured.'
+            );
+            $this->sendAuthorizedMenu($replyChatId, $telegramId);
+
+            return;
+        }
+
+        if (DeepLTranslationResultDto::ERROR_USAGE_UNAVAILABLE === $translationResult->errorCode) {
+            $this->telegramBotService->sendMessage(
+                $replyChatId,
+                'Cannot verify DeepL usage right now, translation is paused. Try again later or send /cancel.'
+            );
+
+            return;
+        }
+
+        $this->telegramBotService->sendMessage(
+            $replyChatId,
+            'DeepL translation failed. Try again or send /cancel.'
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $callbackQuery
+     */
+    private function resolveCallbackChatId(array $callbackQuery, string $defaultChatId): string
+    {
+        $message = $callbackQuery['message'] ?? null;
+        if (!is_array($message)) {
+            return $defaultChatId;
+        }
+
+        $chat = $message['chat'] ?? null;
+        if (!is_array($chat) || !isset($chat['id'])) {
+            return $defaultChatId;
+        }
+
+        return (string) $chat['id'];
+    }
+
+    private function formatUsageInfo(?\App\DTO\Translation\DeepLUsageDto $usage): string
+    {
+        if (null === $usage || $usage->characterLimit <= 0) {
+            return 'DeepL usage: n/a';
+        }
+
+        return sprintf(
+            'DeepL usage: %d / %d (%.2f%%)',
+            $usage->characterCount,
+            $usage->characterLimit,
+            $usage->usagePercent()
         );
     }
 

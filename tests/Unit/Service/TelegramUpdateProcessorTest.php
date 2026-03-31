@@ -6,8 +6,14 @@ namespace App\Tests\Unit\Service;
 
 use App\Entity\TelegramUser;
 use App\Entity\User;
+use App\Repository\ApiLimitRepository;
 use App\Repository\TelegramUserRepository;
+use App\Service\DeepLTranslationService;
+use App\Service\GeorgianTextNormalizer;
+use App\Service\Notification\NotificationActionService;
+use App\Service\RedisStore;
 use App\Service\TelegramBotService;
+use App\Service\TelegramConversationStateService;
 use App\Service\TelegramMiniAppTokenService;
 use App\Service\TelegramUpdateProcessor;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -183,6 +189,14 @@ final class TelegramUpdateProcessorTest extends TestCase
             'https://example.test/telegram/mini/spend?token=test-token',
             $requests[0]['json']['reply_markup']['inline_keyboard'][0][0]['web_app']['url'] ?? null
         );
+        self::assertSame(
+            'Geo to russian',
+            $requests[0]['json']['reply_markup']['inline_keyboard'][1][0]['text'] ?? null
+        );
+        self::assertSame(
+            'geo_to_russian:start',
+            $requests[0]['json']['reply_markup']['inline_keyboard'][1][0]['callback_data'] ?? null
+        );
     }
 
     public function testAuthorizedUserUsesTelegramPublicHostWhenGeneratedUrlIsLocalOrHttp(): void
@@ -235,6 +249,155 @@ final class TelegramUpdateProcessorTest extends TestCase
         }
     }
 
+    public function testCallbackActionMarksReminderAsDoneForAuthorizedLinkedUser(): void
+    {
+        $linkedUser = (new User())
+            ->setUsername('admin')
+            ->setRoles(['ROLE_ADMIN'])
+            ->setPassword('hash');
+
+        $existing = (new TelegramUser())
+            ->setTelegramId('48995172')
+            ->setFirstName('Sergey')
+            ->setStatus(TelegramUser::STATUS_AUTHORIZED)
+            ->setUser($linkedUser);
+
+        $repository = $this->createTelegramUserRepositoryMock();
+        $repository->expects($this->once())->method('findOneBy')->willReturn($existing);
+        $repository->expects($this->never())->method('save');
+
+        $requests = [];
+        $processor = $this->createProcessor($repository, $requests);
+        $processor->process([
+            'update_id' => 500,
+            'callback_query' => [
+                'id' => 'cb-1',
+                'from' => [
+                    'id' => 48995172,
+                    'is_bot' => false,
+                    'first_name' => 'Sergey',
+                ],
+                'data' => 'nf|declaration_send_tax_service|2041-12|done',
+            ],
+        ]);
+
+        self::assertCount(1, $requests);
+        self::assertSame('https://api.telegram.org/bottest-token/answerCallbackQuery', $requests[0]['url']);
+        self::assertSame('cb-1', $requests[0]['json']['callback_query_id'] ?? null);
+        self::assertSame('Saved. No more reminders this month.', $requests[0]['json']['text'] ?? null);
+    }
+
+    public function testGeoToRussianCallbackStartsPendingConversation(): void
+    {
+        $telegramId = '5550001';
+
+        $existing = (new TelegramUser())
+            ->setTelegramId($telegramId)
+            ->setFirstName('Sergey')
+            ->setStatus(TelegramUser::STATUS_AUTHORIZED);
+
+        $repository = $this->createTelegramUserRepositoryMock();
+        $repository->expects($this->once())->method('findOneBy')->willReturn($existing);
+        $repository->expects($this->never())->method('save');
+
+        $requests = [];
+        $processor = $this->createProcessor($repository, $requests);
+        $processor->process([
+            'update_id' => 700,
+            'callback_query' => [
+                'id' => 'cb-geo',
+                'from' => [
+                    'id' => (int) $telegramId,
+                    'is_bot' => false,
+                    'first_name' => 'Sergey',
+                ],
+                'message' => [
+                    'chat' => [
+                        'id' => (int) $telegramId,
+                        'type' => 'private',
+                    ],
+                ],
+                'data' => 'geo_to_russian:start',
+            ],
+        ]);
+
+        self::assertCount(2, $requests);
+        self::assertSame('https://api.telegram.org/bottest-token/answerCallbackQuery', $requests[0]['url']);
+        self::assertSame('Send Georgian text.', $requests[0]['json']['text'] ?? null);
+        self::assertSame('https://api.telegram.org/bottest-token/sendMessage', $requests[1]['url']);
+        self::assertSame(
+            'Send Georgian text. If you use Latin letters, I will convert them to Georgian first.',
+            $requests[1]['json']['text'] ?? null
+        );
+    }
+
+    public function testGeoToRussianPendingFlowConvertsLatinAndReturnsTranslation(): void
+    {
+        $telegramId = '5550002';
+
+        $existing = (new TelegramUser())
+            ->setTelegramId($telegramId)
+            ->setFirstName('Sergey')
+            ->setStatus(TelegramUser::STATUS_AUTHORIZED);
+
+        $repository = $this->createTelegramUserRepositoryMock();
+        $repository->expects($this->exactly(2))->method('findOneBy')->willReturn($existing);
+        $repository->expects($this->never())->method('save');
+
+        $deepLResponses = [
+            new MockResponse(
+                json_encode(['character_count' => 100, 'character_limit' => 500000], JSON_THROW_ON_ERROR),
+                ['http_code' => Response::HTTP_OK],
+            ),
+            new MockResponse(
+                json_encode(['translations' => [['text' => 'привет']]], JSON_THROW_ON_ERROR),
+                ['http_code' => Response::HTTP_OK],
+            ),
+            new MockResponse(
+                json_encode(['character_count' => 108, 'character_limit' => 500000], JSON_THROW_ON_ERROR),
+                ['http_code' => Response::HTTP_OK],
+            ),
+        ];
+        $deepLResponder = static function () use (&$deepLResponses): MockResponse {
+            $response = array_shift($deepLResponses);
+            if (!$response instanceof MockResponse) {
+                self::fail('Unexpected extra DeepL request.');
+            }
+
+            return $response;
+        };
+
+        $requests = [];
+        $processor = $this->createProcessor($repository, $requests, deepLResponder: $deepLResponder);
+
+        $processor->process([
+            'update_id' => 800,
+            'callback_query' => [
+                'id' => 'cb-geo-2',
+                'from' => [
+                    'id' => (int) $telegramId,
+                    'is_bot' => false,
+                    'first_name' => 'Sergey',
+                ],
+                'message' => [
+                    'chat' => [
+                        'id' => (int) $telegramId,
+                        'type' => 'private',
+                    ],
+                ],
+                'data' => 'geo_to_russian:start',
+            ],
+        ]);
+
+        $processor->process($this->buildUpdate('gamarjoba', (int) $telegramId, (int) $telegramId, 'Sergey', null));
+
+        self::assertCount(4, $requests);
+        self::assertStringContainsString("Converted to Mkhedruli:\nგამარჯობა", $requests[2]['json']['text'] ?? '');
+        self::assertStringContainsString("Russian translation:\nпривет", $requests[2]['json']['text'] ?? '');
+        self::assertStringContainsString('DeepL usage: 108 / 500000', $requests[2]['json']['text'] ?? '');
+        self::assertSame('👇', $requests[3]['json']['text'] ?? null);
+    }
+
     /**
      * @param array<int, array{method: string, url: string, json: array<string, mixed>}> $requests
      */
@@ -242,6 +405,7 @@ final class TelegramUpdateProcessorTest extends TestCase
         TelegramUserRepository $repository,
         array &$requests,
         string $generatedUrl = 'https://example.test/telegram/mini/spend?token=test-token',
+        ?callable $deepLResponder = null,
     ): TelegramUpdateProcessor {
         $httpClient = new MockHttpClient(static function (string $method, string $url, array $options) use (&$requests): MockResponse {
             $json = self::extractPayload($options);
@@ -261,11 +425,36 @@ final class TelegramUpdateProcessorTest extends TestCase
         $miniAppTokenService = new TelegramMiniAppTokenService('test-secret');
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn($generatedUrl);
+        $notificationActionService = new NotificationActionService(new RedisStore('invalid-dsn'));
+        $conversationStateService = new TelegramConversationStateService(new RedisStore('invalid-dsn'));
+        $georgianTextNormalizer = new GeorgianTextNormalizer();
+        $apiLimitRepository = $this->getMockBuilder(ApiLimitRepository::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['save'])
+            ->getMock();
+
+        $deepLHttpClient = new MockHttpClient(
+            $deepLResponder ?? static function (): void {
+                self::fail('DeepL API must not be called in this test.');
+            }
+        );
+        $deepLTranslationService = new DeepLTranslationService(
+            $deepLHttpClient,
+            $apiLimitRepository,
+            new NullLogger(),
+            'test-deepl-key',
+            'https://api-free.deepl.com',
+            95,
+        );
 
         return new TelegramUpdateProcessor(
             $repository,
             $bot,
+            $notificationActionService,
             $miniAppTokenService,
+            $conversationStateService,
+            $georgianTextNormalizer,
+            $deepLTranslationService,
             $urlGenerator,
             new NullLogger()
         );
