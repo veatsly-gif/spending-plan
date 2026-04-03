@@ -20,6 +20,14 @@ class SpendingPlan
     public const PLAN_TYPE_PLANNED = 'planned';
     public const PLAN_TYPE_CUSTOM = 'custom';
 
+    /**
+     * Plan types that represent calendar / month budget limits (shown after higher-weight plans, before pattern/custom types when weight ties).
+     */
+    public const DATE_BASED_LIMIT_PLAN_TYPES = [
+        self::PLAN_TYPE_REGULAR,
+        self::PLAN_TYPE_PLANNED,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -97,6 +105,11 @@ class SpendingPlan
         $this->planType = trim($planType);
 
         return $this;
+    }
+
+    public function isDateBasedLimitPlanType(): bool
+    {
+        return \in_array($this->planType, self::DATE_BASED_LIMIT_PLAN_TYPES, true);
     }
 
     public function getDateFrom(): \DateTimeImmutable

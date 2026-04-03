@@ -399,7 +399,7 @@ final class DashboardControllerService
      */
     public function getSpendPlanChoicesForDate(\DateTimeImmutable $date): array
     {
-        return $this->spendingPlanRepository->findForDate($date);
+        return $this->spendingPlanRepository->findForSpendSelection($date);
     }
 
     public function createIncome(User $user, DashboardIncomeDraftDto $draft): IncomeCreateResultDto

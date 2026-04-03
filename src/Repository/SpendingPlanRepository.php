@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\SpendingPlan;
+use App\SpendingPlan\SpendingPlanDisplaySorter;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -98,16 +99,15 @@ class SpendingPlanRepository extends ServiceEntityRepository
      */
     public function findForMonth(\DateTimeImmutable $monthStart, \DateTimeImmutable $monthEnd): array
     {
-        return $this->createQueryBuilder('sp')
+        $plans = $this->createQueryBuilder('sp')
             ->andWhere('sp.dateFrom <= :monthEnd')
             ->andWhere('sp.dateTo >= :monthStart')
             ->setParameter('monthStart', $monthStart->setTime(0, 0))
             ->setParameter('monthEnd', $monthEnd->setTime(0, 0))
-            ->orderBy('sp.dateFrom', 'ASC')
-            ->addOrderBy('sp.weight', 'DESC')
-            ->addOrderBy('sp.id', 'ASC')
             ->getQuery()
             ->getResult();
+
+        return SpendingPlanDisplaySorter::sort($plans);
     }
 
     public function countForMonth(\DateTimeImmutable $monthStart, \DateTimeImmutable $monthEnd): int
@@ -125,32 +125,46 @@ class SpendingPlanRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return list<SpendingPlan>
+     * @deprecated Use findForSpendSelection — spend UI lists all plans overlapping the calendar month of the spend date.
      */
     public function findForDate(\DateTimeImmutable $date): array
     {
-        return $this->createQueryBuilder('sp')
-            ->andWhere('sp.dateFrom <= :date')
-            ->andWhere('sp.dateTo >= :date')
-            ->setParameter('date', $date->setTime(0, 0))
-            ->orderBy('sp.weight', 'DESC')
-            ->addOrderBy('sp.dateFrom', 'ASC')
-            ->addOrderBy('sp.id', 'ASC')
-            ->getQuery()
-            ->getResult();
+        return $this->findForSpendSelection($date);
+    }
+
+    /**
+     * Plans overlapping the calendar month of {@see $date} (same set as admin spending-plan list for that month).
+     * Order: higher {@see SpendingPlan::weight} first; if equal, regular/planned (date-based limits) before other types;
+     * then {@see SpendingPlan::getDateFrom()}, then id.
+     *
+     * @return list<SpendingPlan>
+     */
+    public function findForSpendSelection(\DateTimeImmutable $date): array
+    {
+        $d = $date->setTime(0, 0);
+        $monthStart = $d->modify('first day of this month');
+        $monthEnd = $monthStart->modify('last day of this month');
+
+        return $this->findForMonth($monthStart, $monthEnd);
     }
 
     public function findBestForDate(\DateTimeImmutable $date): ?SpendingPlan
     {
-        return $this->createQueryBuilder('sp')
+        $day = $date->setTime(0, 0);
+        /** @var list<SpendingPlan> $candidates */
+        $candidates = $this->createQueryBuilder('sp')
             ->andWhere('sp.dateFrom <= :date')
             ->andWhere('sp.dateTo >= :date')
-            ->setParameter('date', $date->setTime(0, 0))
-            ->orderBy('sp.weight', 'DESC')
-            ->addOrderBy('sp.dateFrom', 'ASC')
-            ->addOrderBy('sp.id', 'ASC')
-            ->setMaxResults(1)
+            ->setParameter('date', $day)
             ->getQuery()
-            ->getOneOrNullResult();
+            ->getResult();
+
+        if ([] === $candidates) {
+            return null;
+        }
+
+        $sorted = SpendingPlanDisplaySorter::sort($candidates);
+
+        return $sorted[0] ?? null;
     }
 }
