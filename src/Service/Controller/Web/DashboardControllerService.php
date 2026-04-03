@@ -220,7 +220,7 @@ final class DashboardControllerService
 
         $spends = $this->spendRepository->findForMonth($monthStart);
         $monthEnd = $monthStart->modify('last day of this month')->setTime(0, 0);
-        $monthPlans = $this->spendingPlanRepository->findForMonth($monthStart, $monthEnd);
+        $monthPlans = $this->spendingPlanRepository->findForMonth($monthStart, $monthEnd, $now);
 
         $availableCurrencies = $this->extractAvailableCurrencies($spends);
         if ([] === $availableCurrencies) {
@@ -779,8 +779,6 @@ final class DashboardControllerService
                 ),
             ];
         }
-
-        usort($items, static fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
 
         return $items;
     }

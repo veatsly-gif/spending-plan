@@ -558,6 +558,7 @@
 
                         applyDefaults(form, data.defaults || {});
                         updateWidget(data.widget || null);
+                        window.__miniSpendsNeedsRefresh = true;
                         form.classList.remove("is-success-submit");
                         void form.offsetWidth;
                         form.classList.add("is-success-submit");
@@ -614,6 +615,14 @@
                 }
 
                 function activate(tab) {
+                    if (tab === "spends" && window.__miniSpendsNeedsRefresh === true) {
+                        const current = new URL(window.location.href);
+                        current.searchParams.set("tab", "spends");
+                        current.searchParams.set("_ts", String(Date.now()));
+                        window.location.href = current.toString();
+                        return;
+                    }
+
                     triggers.forEach(function (node) {
                         if (!(node instanceof HTMLElement)) {
                             return;

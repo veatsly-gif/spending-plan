@@ -221,4 +221,92 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
         $removedSpend = $this->entityManager->getRepository(Spend::class)->find($spend->getId());
         self::assertNull($removedSpend);
     }
+
+    public function testSpendFormPlansFollowPrioritySortingRules(): void
+    {
+        $currency = $this->entityManager->getRepository(Currency::class)->findOneBy(['code' => 'GEL']);
+        self::assertInstanceOf(Currency::class, $currency);
+
+        $today = (new \DateTimeImmutable('today'))->setTime(0, 0);
+        $monthStart = $today->modify('first day of this month');
+        $monthEnd = $today->modify('last day of this month');
+
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName("Dima's birthday")
+                ->setPlanType(SpendingPlan::PLAN_TYPE_CUSTOM)
+                ->setDateFrom($today)
+                ->setDateTo($today)
+                ->setLimitAmount('100.00')
+                ->setCurrency($currency)
+                ->setWeight(2)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Пятничка')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKDAY)
+                ->setDateFrom($today)
+                ->setDateTo($today)
+                ->setLimitAmount('10.00')
+                ->setCurrency($currency)
+                ->setWeight(1)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Planned spends')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_PLANNED)
+                ->setDateFrom($monthStart)
+                ->setDateTo($monthEnd)
+                ->setLimitAmount('200.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Выхи 4-5 апреля')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKEND)
+                ->setDateFrom($today->modify('+1 day'))
+                ->setDateTo($today->modify('+2 day'))
+                ->setLimitAmount('20.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Будни 1-2 апреля')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKDAY)
+                ->setDateFrom($monthStart)
+                ->setDateTo($monthStart->modify('+1 day'))
+                ->setLimitAmount('20.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->flush();
+
+        $this->loginAs(BaseUsersFixture::TEST_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+
+        $options = $crawler->filterXPath(
+            '//select[@name="dashboard_spend[spendingPlan]"]/option[@value!=""]'
+        );
+        self::assertGreaterThanOrEqual(6, $options->count());
+
+        $labels = [];
+        foreach ($options as $node) {
+            $labels[] = trim((string) $node->textContent);
+        }
+
+        self::assertStringStartsWith("Dima's birthday", $labels[0] ?? '');
+        self::assertStringStartsWith('Пятничка', $labels[1] ?? '');
+        self::assertStringStartsWith('Выхи 4-5 апреля', $labels[2] ?? '');
+        self::assertStringStartsWith('March base plan', $labels[3] ?? '');
+        self::assertStringStartsWith('Planned spends', $labels[4] ?? '');
+        self::assertStringStartsWith('Будни 1-2 апреля', $labels[5] ?? '');
+    }
 }

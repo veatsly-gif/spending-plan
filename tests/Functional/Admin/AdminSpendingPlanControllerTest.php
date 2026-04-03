@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Admin;
 
+use App\Entity\Currency;
 use App\Entity\SpendingPlan;
 use App\Tests\Fixtures\BaseCurrenciesFixture;
 use App\Tests\Fixtures\BaseUsersFixture;
@@ -25,6 +26,11 @@ final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
                 CurrentMonthSpendingPlanFixture::class,
             ],
             'testAdminCanChangeSpendingPlanCurrencyOnEdit' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                CurrentMonthSpendingPlanFixture::class,
+            ],
+            'testAdminExistingPlansFollowPrioritySortingRules' => [
                 BaseCurrenciesFixture::class,
                 BaseUsersFixture::class,
                 CurrentMonthSpendingPlanFixture::class,
@@ -179,5 +185,91 @@ final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
         $updated = $this->entityManager->getRepository(SpendingPlan::class)->find($plan->getId());
         self::assertInstanceOf(SpendingPlan::class, $updated);
         self::assertSame('EUR', $updated->getCurrency()?->getCode());
+    }
+
+    public function testAdminExistingPlansFollowPrioritySortingRules(): void
+    {
+        $currency = $this->entityManager->getRepository(Currency::class)->findOneBy(['code' => 'GEL']);
+        self::assertInstanceOf(Currency::class, $currency);
+
+        $today = (new \DateTimeImmutable('today'))->setTime(0, 0);
+        $monthStart = $today->modify('first day of this month');
+        $monthEnd = $today->modify('last day of this month');
+
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName("Dima's birthday")
+                ->setPlanType(SpendingPlan::PLAN_TYPE_CUSTOM)
+                ->setDateFrom($today)
+                ->setDateTo($today)
+                ->setLimitAmount('100.00')
+                ->setCurrency($currency)
+                ->setWeight(2)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Пятничка')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKDAY)
+                ->setDateFrom($today)
+                ->setDateTo($today)
+                ->setLimitAmount('10.00')
+                ->setCurrency($currency)
+                ->setWeight(1)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Planned spends')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_PLANNED)
+                ->setDateFrom($monthStart)
+                ->setDateTo($monthEnd)
+                ->setLimitAmount('200.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Выхи 4-5 апреля')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKEND)
+                ->setDateFrom($today->modify('+1 day'))
+                ->setDateTo($today->modify('+2 day'))
+                ->setLimitAmount('20.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->persist(
+            (new SpendingPlan())
+                ->setName('Будни 1-2 апреля')
+                ->setPlanType(SpendingPlan::PLAN_TYPE_WEEKDAY)
+                ->setDateFrom($monthStart)
+                ->setDateTo($monthStart->modify('+1 day'))
+                ->setLimitAmount('20.00')
+                ->setCurrency($currency)
+                ->setWeight(0)
+                ->setIsSystem(false)
+        );
+        $this->entityManager->flush();
+
+        $this->loginAs('admin');
+        $crawler = $this->client->request('GET', '/admin/spending-plans?month='.$today->format('Y-m'));
+        self::assertResponseIsSuccessful();
+
+        $headers = $crawler->filter('#sp-existing-list .existing-card h3');
+        self::assertGreaterThanOrEqual(6, $headers->count());
+
+        $labels = [];
+        foreach ($headers as $header) {
+            $labels[] = trim((string) $header->textContent);
+        }
+
+        self::assertSame("Dima's birthday", $labels[0] ?? '');
+        self::assertSame('Пятничка', $labels[1] ?? '');
+        self::assertSame('Выхи 4-5 апреля', $labels[2] ?? '');
+        self::assertSame('March base plan', $labels[3] ?? '');
+        self::assertSame('Planned spends', $labels[4] ?? '');
+        self::assertSame('Будни 1-2 апреля', $labels[5] ?? '');
     }
 }

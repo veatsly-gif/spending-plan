@@ -57,7 +57,7 @@ final class AdminSpendingPlanControllerService
         );
 
         $suggestedPlans = $this->suggestionCacheService->getSuggestions($activeMonthKey);
-        $existingPlans = $spendingPlanRepository->findForMonth($activeMonthStart, $activeMonthEnd);
+        $existingPlans = $spendingPlanRepository->findForMonth($activeMonthStart, $activeMonthEnd, $now);
         $currencies = $this->currencyRepository->findBy([], ['code' => 'ASC']);
         $currencyCodes = [];
         foreach ($currencies as $currency) {

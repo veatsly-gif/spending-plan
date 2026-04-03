@@ -97,7 +97,11 @@ class SpendingPlanRepository extends ServiceEntityRepository
     /**
      * @return list<SpendingPlan>
      */
-    public function findForMonth(\DateTimeImmutable $monthStart, \DateTimeImmutable $monthEnd): array
+    public function findForMonth(
+        \DateTimeImmutable $monthStart,
+        \DateTimeImmutable $monthEnd,
+        ?\DateTimeImmutable $referenceDate = null,
+    ): array
     {
         $plans = $this->createQueryBuilder('sp')
             ->andWhere('sp.dateFrom <= :monthEnd')
@@ -107,7 +111,10 @@ class SpendingPlanRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
 
-        return SpendingPlanDisplaySorter::sort($plans);
+        return SpendingPlanDisplaySorter::sort(
+            $plans,
+            ($referenceDate ?? $monthStart)->setTime(0, 0)
+        );
     }
 
     public function countForMonth(\DateTimeImmutable $monthStart, \DateTimeImmutable $monthEnd): int
@@ -134,8 +141,8 @@ class SpendingPlanRepository extends ServiceEntityRepository
 
     /**
      * Plans overlapping the calendar month of {@see $date} (same set as admin spending-plan list for that month).
-     * Order: higher {@see SpendingPlan::weight} first; if equal, regular/planned (date-based limits) before other types;
-     * then {@see SpendingPlan::getDateFrom()}, then id.
+     * Order follows {@see SpendingPlanDisplaySorter}: active boosted plans, active date-based plans,
+     * then regular/planned, future date-based and past date-based.
      *
      * @return list<SpendingPlan>
      */
@@ -145,7 +152,7 @@ class SpendingPlanRepository extends ServiceEntityRepository
         $monthStart = $d->modify('first day of this month');
         $monthEnd = $monthStart->modify('last day of this month');
 
-        return $this->findForMonth($monthStart, $monthEnd);
+        return $this->findForMonth($monthStart, $monthEnd, $d);
     }
 
     public function findBestForDate(\DateTimeImmutable $date): ?SpendingPlan
@@ -163,7 +170,7 @@ class SpendingPlanRepository extends ServiceEntityRepository
             return null;
         }
 
-        $sorted = SpendingPlanDisplaySorter::sort($candidates);
+        $sorted = SpendingPlanDisplaySorter::sort($candidates, $day);
 
         return $sorted[0] ?? null;
     }
