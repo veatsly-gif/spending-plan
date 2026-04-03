@@ -1,0 +1,75 @@
+name: Deploy Production On Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to deploy (for example v0.1.3)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production server
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      DEPLOY_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+      PROD_HOST: ${{ secrets.PROD_HOST }}
+      PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      PROD_APP_DIR: ${{ secrets.PROD_APP_DIR }}
+    steps:
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          test -n "${PROD_HOST}"
+          test -n "${PROD_SSH_USER}"
+          test -n "${PROD_APP_DIR}"
+
+      - name: Validate tag format
+        run: |
+          set -euo pipefail
+          case "${DEPLOY_TAG}" in
+            v*) ;;
+            *)
+              echo "Only tags starting with 'v' are allowed: ${DEPLOY_TAG}"
+              exit 1
+              ;;
+          esac
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+      - name: Add production host to known_hosts
+        run: |
+          set -euo pipefail
+          mkdir -p "${HOME}/.ssh"
+          ssh-keyscan -H "${PROD_HOST}" >> "${HOME}/.ssh/known_hosts"
+
+      - name: Deploy selected tag on server
+        run: |
+          set -euo pipefail
+          ssh "${PROD_SSH_USER}@${PROD_HOST}" "bash -s -- '${DEPLOY_TAG}' '${PROD_APP_DIR}'" << 'REMOTE'
+          set -euo pipefail
+          DEPLOY_TAG="$1"
+          PROD_APP_DIR="$2"
+
+          cd "${PROD_APP_DIR}"
+          git fetch --tags origin
+          git checkout "${DEPLOY_TAG}"
+          docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
+          docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+
+          echo "Deployed ${DEPLOY_TAG} on $(hostname) in ${PROD_APP_DIR}"
+          REMOTE
