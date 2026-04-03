@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\DTO\Translation\DeepLTranslationResultDto;
 use App\Entity\TelegramUser;
+use App\Entity\User;
 use App\Repository\TelegramUserRepository;
 use App\Service\Notification\NotificationActionService;
 use Psr\Log\LoggerInterface;
@@ -19,6 +20,7 @@ final class TelegramUpdateProcessor
     public function __construct(
         private readonly TelegramUserRepository $telegramUserRepository,
         private readonly TelegramBotService $telegramBotService,
+        private readonly AdminNotificationTriggerService $adminNotificationTriggerService,
         private readonly NotificationActionService $notificationActionService,
         private readonly TelegramMiniAppTokenService $miniAppTokenService,
         private readonly TelegramConversationStateService $conversationStateService,
@@ -65,6 +67,11 @@ final class TelegramUpdateProcessor
 
         if (null !== $telegramUser && TelegramUser::STATUS_AUTHORIZED === $telegramUser->getStatus()) {
             $this->logger->info('Telegram user is authorized.', ['telegram_id' => $telegramId]);
+
+            $linkedUser = $telegramUser->getUser();
+            if ('/start' === $command && $linkedUser instanceof User) {
+                $this->adminNotificationTriggerService->run($linkedUser, new \DateTimeImmutable());
+            }
 
             if ($this->conversationStateService->isGeoToRussianPending($telegramId)) {
                 if ('/cancel' === $command) {

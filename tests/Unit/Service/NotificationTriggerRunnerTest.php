@@ -150,6 +150,51 @@ YAML
         self::assertSame(2, $executionStore->getExecutionCount(0, 'test_interval_rule'));
     }
 
+    public function testDayOfMonthLteGateAllowsOnlyFirstTenDays(): void
+    {
+        $projectDir = $this->createTempProjectWithConfig(
+            <<<YAML
+notifications:
+  - code: declaration_send_daily
+    type: time_based
+    date:
+      day_of_month_lte: 10
+    triggers:
+      - test_trigger
+    delivery_types:
+      - pop-up
+    template: declaration_send_tax_service
+    frequency:
+      mode: every_time
+YAML
+        );
+
+        $loader = new NotificationTriggerConfigLoader($projectDir, 'test-runner');
+        $executionStore = new NotificationTriggerExecutionStore(new RedisStore('invalid-dsn'));
+        $executionStore->reset(0, 'declaration_send_daily');
+        $trigger = new TestNotificationTrigger('test_trigger', [
+            'monthKey' => '2026-04',
+        ]);
+
+        $captured = [];
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher
+            ->expects($this->once())
+            ->method('dispatch')
+            ->willReturnCallback(static function (object $event) use (&$captured): object {
+                $captured[] = $event;
+
+                return $event;
+            });
+
+        $runner = new NotificationTriggerRunner($loader, $executionStore, $dispatcher, [$trigger]);
+        $runner->runForAdmin($this->buildAdminUser(), new \DateTimeImmutable('2026-04-05 10:00:00'));
+        $runner->runForAdmin($this->buildAdminUser(), new \DateTimeImmutable('2026-04-11 10:00:00'));
+
+        self::assertCount(1, $captured);
+        self::assertSame(1, $executionStore->getExecutionCount(0, 'declaration_send_daily'));
+    }
+
     private function buildAdminUser(): User
     {
         return (new User())

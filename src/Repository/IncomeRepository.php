@@ -88,6 +88,28 @@ class IncomeRepository extends ServiceEntityRepository
     }
 
     /**
+     * @return list<string>
+     */
+    public function findMonthKeys(): array
+    {
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative(
+            "SELECT DISTINCT TO_CHAR(created_at, 'YYYY-MM') AS month_key FROM income ORDER BY month_key ASC"
+        );
+
+        $keys = [];
+        foreach ($rows as $row) {
+            $monthKey = isset($row['month_key']) ? trim((string) $row['month_key']) : '';
+            if (1 !== preg_match('/^\d{4}-\d{2}$/', $monthKey)) {
+                continue;
+            }
+
+            $keys[] = $monthKey;
+        }
+
+        return $keys;
+    }
+
+    /**
      * @return list<Income>
      */
     public function findForMonthByUser(User $user, \DateTimeImmutable $monthStart): array

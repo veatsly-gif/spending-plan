@@ -13,7 +13,7 @@
         {% block javascripts %}{% endblock %}
     </head>
     <body>
-        {% set globalPopup = is_granted('ROLE_ADMIN') ? admin_popup() : {show: false, title: '', message: '', monthKey: ''} %}
+        {% set globalPopup = is_granted('ROLE_ADMIN') ? admin_popup() : {show: false, title: '', message: '', monthKey: '', template: '', actions: []} %}
         <header class="site-nav">
             <div class="nav-shell">
                 <a class="brand" href="{{ path('web_home') }}">{{ 'base.brand'|trans }}</a>
@@ -67,9 +67,26 @@
                 <button type="button" class="sp-popup-close" data-sp-popup-close aria-label="{{ 'base.close'|trans }}">×</button>
                 <h3>{{ globalPopup.title }}</h3>
                 <p>{{ globalPopup.message }}</p>
-                <a class="btn" href="{{ path('admin_spending_plans_index', {month: globalPopup.monthKey}) }}">
-                    {{ 'admin.spending_plans.open'|trans }}
-                </a>
+                {% if globalPopup.actions is iterable and globalPopup.actions|length > 0 %}
+                    <div class="actions sp-popup-actions">
+                        {% for action in globalPopup.actions %}
+                            <form method="post" action="{{ path('admin_notifications_action') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('admin_notification_action') }}">
+                                <input type="hidden" name="template" value="{{ globalPopup.template }}">
+                                <input type="hidden" name="monthKey" value="{{ globalPopup.monthKey }}">
+                                <input type="hidden" name="action" value="{{ action.code|default('') }}">
+                                <input type="hidden" name="_redirect" value="{{ app.request.requestUri }}">
+                                <button type="submit" class="{{ (action.code|default('')) == 'remind_later' ? 'btn-ghost' : 'btn' }}">
+                                    {{ action.label|default('Action') }}
+                                </button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                {% elseif globalPopup.monthKey is not empty %}
+                    <a class="btn" href="{{ path('admin_spending_plans_index', {month: globalPopup.monthKey}) }}">
+                        {{ 'admin.spending_plans.open'|trans }}
+                    </a>
+                {% endif %}
             </aside>
             <script>
                 (() => {

@@ -23,7 +23,9 @@ final readonly class AdminDashboardViewDto
      *         show: bool,
      *         title: string,
      *         message: string,
-     *         monthKey: string
+     *         monthKey: string,
+     *         template: string,
+     *         actions: list<array{code: string, label: string}>
      *     }
      * }
      */

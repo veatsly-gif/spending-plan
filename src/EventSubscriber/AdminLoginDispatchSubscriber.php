@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\EventSubscriber;
 
 use App\Entity\User;
-use App\Service\NotificationTriggerRunner;
+use App\Service\AdminNotificationTriggerService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
 final class AdminLoginDispatchSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly NotificationTriggerRunner $triggerRunner,
+        private readonly AdminNotificationTriggerService $adminNotificationTriggerService,
     ) {
     }
 
@@ -34,6 +34,6 @@ final class AdminLoginDispatchSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->triggerRunner->runForAdmin($user, new \DateTimeImmutable());
+        $this->adminNotificationTriggerService->run($user, new \DateTimeImmutable());
     }
 }

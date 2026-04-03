@@ -35,6 +35,21 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
                 BaseUsersFixture::class,
                 BaseIncomesFixture::class,
             ],
+            'testIncomesPageSupportsFiltersAndPagination' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
+            'testUserCanEditIncomeFromIncomesPage' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
+            'testUserCanDeleteIncomeFromIncomesPage' => [
+                BaseCurrenciesFixture::class,
+                BaseUsersFixture::class,
+                BaseIncomesFixture::class,
+            ],
             default => [
                 BaseCurrenciesFixture::class,
                 BaseUsersFixture::class,
@@ -87,6 +102,70 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
         self::assertSame('2.5000', $income->getRate());
     }
 
+    public function testIncomerSeesIncomeModalTriggersOnDashboardAndIncomesPage(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal-open]')->count());
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal] form[name="dashboard_income"]')->count());
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal-open]')->count());
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal] form[name="dashboard_income"]')->count());
+    }
+
+    public function testAdminSeesIncomeModalTriggersOnDashboardAndIncomesPage(): void
+    {
+        $this->loginAs(BaseUsersFixture::ADMIN_USERNAME);
+
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal-open]')->count());
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal] form[name="dashboard_income"]')->count());
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal-open]')->count());
+        self::assertGreaterThan(0, $crawler->filter('[data-income-modal] form[name="dashboard_income"]')->count());
+    }
+
+    public function testAdminCanAddIncomeUsingDashboardIncomeForm(): void
+    {
+        $this->loginAs(BaseUsersFixture::ADMIN_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+
+        $gelOption = $crawler->filterXPath(
+            '//select[@name="dashboard_income[currency]"]'
+            .'/option[contains(normalize-space(.), "GEL")]'
+        )->first();
+        self::assertSame(1, $gelOption->count());
+        $gelValue = (string) $gelOption->attr('value');
+
+        $form = $crawler->selectButton('Add income')->form([
+            'dashboard_income[amount]' => '15.00',
+            'dashboard_income[currency]' => $gelValue,
+            'dashboard_income[comment]' => 'Admin modal income',
+            'dashboard_income[convertToGel]' => 1,
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseRedirects('/dashboard');
+
+        $this->entityManager->clear();
+        $income = $this->entityManager->getRepository(Income::class)->findOneBy([
+            'comment' => 'Admin modal income',
+        ]);
+        self::assertInstanceOf(Income::class, $income);
+        self::assertSame('15.00', $income->getAmount());
+        self::assertSame('15.00', $income->getAmountInGel());
+        self::assertSame('1.0000', $income->getRate());
+        self::assertSame('admin', $income->getUserAdded()?->getUsername());
+    }
+
     public function testRegularUserCannotSeeIncomeCreateForm(): void
     {
         $this->loginAs(BaseUsersFixture::TEST_USERNAME);
@@ -113,6 +192,82 @@ final class DashboardIncomeControllerTest extends DatabaseWebTestCase
         $crawler = $this->client->request('GET', '/dashboard/incomes');
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Base EUR income', $crawler->text(''));
+    }
+
+    public function testIncomesPageSupportsFiltersAndPagination(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Base EUR income', $crawler->text(''));
+        self::assertStringContainsString('Base GEL income', $crawler->text(''));
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes?q=EUR');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Base EUR income', $crawler->text(''));
+        self::assertStringNotContainsString('Base GEL income', $crawler->text(''));
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes?perPage=1&page=2');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Base GEL income', $crawler->text(''));
+        self::assertStringNotContainsString('Base EUR income', $crawler->text(''));
+    }
+
+    public function testUserCanEditIncomeFromIncomesPage(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+
+        $income = $this->entityManager->getRepository(Income::class)->findOneBy(['comment' => 'Base GEL income']);
+        self::assertInstanceOf(Income::class, $income);
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes/'.$income->getId().'/edit');
+        self::assertResponseIsSuccessful();
+
+        $form = $crawler->selectButton('Save')->form([
+            'dashboard_income[amount]' => '120.00',
+            'dashboard_income[currency]' => (string) $income->getCurrency()?->getId(),
+            'dashboard_income[comment]' => 'Base GEL income updated',
+            'dashboard_income[convertToGel]' => 1,
+        ]);
+
+        $this->client->submit($form);
+
+        self::assertResponseRedirects('/dashboard/incomes?month='.(new \DateTimeImmutable('first day of this month'))->format('Y-m'));
+
+        $this->entityManager->clear();
+        $updatedIncome = $this->entityManager->getRepository(Income::class)->find($income->getId());
+        self::assertInstanceOf(Income::class, $updatedIncome);
+        self::assertSame('120.00', $updatedIncome->getAmount());
+        self::assertSame('120.00', $updatedIncome->getAmountInGel());
+        self::assertSame('1.0000', $updatedIncome->getRate());
+        self::assertSame('Base GEL income updated', $updatedIncome->getComment());
+    }
+
+    public function testUserCanDeleteIncomeFromIncomesPage(): void
+    {
+        $this->loginAs(BaseUsersFixture::INCOMER_USERNAME);
+
+        $income = $this->entityManager->getRepository(Income::class)->findOneBy(['comment' => 'Base EUR income']);
+        self::assertInstanceOf(Income::class, $income);
+
+        $crawler = $this->client->request('GET', '/dashboard/incomes');
+        self::assertResponseIsSuccessful();
+
+        $deleteForm = $crawler->filter(sprintf('form[action="/dashboard/incomes/%d/delete"]', $income->getId()))->first();
+        self::assertSame(1, $deleteForm->count());
+        $csrf = (string) $deleteForm->filter('input[name="_token"]')->attr('value');
+        self::assertNotSame('', $csrf);
+
+        $this->client->request('POST', '/dashboard/incomes/'.$income->getId().'/delete', [
+            '_token' => $csrf,
+        ]);
+
+        self::assertResponseRedirects('/dashboard/incomes?month='.(new \DateTimeImmutable('first day of this month'))->format('Y-m'));
+
+        $this->entityManager->clear();
+        $removedIncome = $this->entityManager->getRepository(Income::class)->find($income->getId());
+        self::assertNull($removedIncome);
     }
 
     public function testDashboardIncomeTotalsAreSharedForAllUsers(): void

@@ -11,6 +11,8 @@ final readonly class AdminSpendingPlanPopupDto
         public string $title,
         public string $message,
         public string $monthKey,
+        public string $template = '',
+        public array $actions = [],
     ) {
     }
 
@@ -19,7 +21,9 @@ final readonly class AdminSpendingPlanPopupDto
      *     show: bool,
      *     title: string,
      *     message: string,
-     *     monthKey: string
+     *     monthKey: string,
+     *     template: string,
+     *     actions: list<array{code: string, label: string}>
      * }
      */
     public function toArray(): array
@@ -29,6 +33,8 @@ final readonly class AdminSpendingPlanPopupDto
             'title' => $this->title,
             'message' => $this->message,
             'monthKey' => $this->monthKey,
+            'template' => $this->template,
+            'actions' => $this->actions,
         ];
     }
 }

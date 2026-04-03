@@ -567,6 +567,10 @@ ul {
   margin-top: 8px;
 }
 
+.sp-icons form {
+  margin: 0;
+}
+
 .icon-btn {
   width: 36px;
   height: 36px;
@@ -578,6 +582,10 @@ ul {
   align-items: center;
   justify-content: center;
   font-size: 1rem;
+}
+
+.icon-btn svg {
+  display: block;
 }
 
 .icon-btn.approve {
@@ -605,6 +613,54 @@ ul {
   animation: sp-slide-in 0.22s ease;
 }
 
+.sp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(9, 17, 14, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.sp-modal[hidden] {
+  display: none;
+}
+
+.sp-modal-card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.sp-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sp-modal-head h2 {
+  margin: 0;
+}
+
+.sp-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .sp-popup.is-hidden {
   opacity: 0;
   transform: translateX(24px);
@@ -622,6 +678,14 @@ ul {
   border: 1px solid var(--line);
   color: var(--muted);
   padding: 0;
+}
+
+.sp-popup-actions {
+  margin-top: 10px;
+}
+
+.sp-popup-actions form {
+  margin: 0;
 }
 
 .sp-toast {

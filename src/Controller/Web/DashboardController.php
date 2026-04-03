@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Web;
 
+use App\Entity\Income;
 use App\Entity\User;
 use App\Form\Web\DashboardIncomeType;
 use App\Form\Web\DashboardSpendType;
+use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Service\Controller\Web\DashboardControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,12 +25,13 @@ final class DashboardController extends AbstractController
 {
     public function __construct(
         private readonly DashboardControllerService $service,
+        private readonly IncomeRepository $incomeRepository,
         private readonly SpendRepository $spendRepository,
         private readonly TranslatorInterface $translator,
     ) {
     }
 
-    #[Route('/dashboard', name: 'app_dashboard', methods: ['GET', 'POST'])]
+    #[Route('/dashboard', name: 'app_dashboard', methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
         $user = $this->getUser();
@@ -43,24 +46,11 @@ final class DashboardController extends AbstractController
         ]);
 
         $incomeForm = null;
-        if (in_array('ROLE_INCOMER', $user->getRoles(), true)) {
+        if ($this->isGranted('ROLE_INCOMER')) {
             $incomeDraft = $this->service->createIncomeDraft();
-            $incomeForm = $this->createForm(DashboardIncomeType::class, $incomeDraft);
-            $incomeForm->handleRequest($request);
-
-            if ($incomeForm->isSubmitted() && $incomeForm->isValid()) {
-                $result = $this->service->createIncome($user, $incomeDraft);
-                if (!$result->success) {
-                    $this->addFlash(
-                        'error',
-                        $result->errorMessage ?? 'flash.unable_create_income'
-                    );
-                } else {
-                    $this->addFlash('success', 'flash.income_added');
-                }
-
-                return $this->redirectToRoute('app_dashboard');
-            }
+            $incomeForm = $this->createForm(DashboardIncomeType::class, $incomeDraft, [
+                'action' => $this->generateUrl('app_dashboard_incomes_create'),
+            ]);
         }
 
         $dto = $this->service->buildViewData($user, new \DateTimeImmutable());
@@ -74,16 +64,138 @@ final class DashboardController extends AbstractController
     }
 
     #[Route('/dashboard/incomes', name: 'app_dashboard_incomes', methods: ['GET'])]
-    public function incomes(): Response
+    public function incomes(Request $request): Response
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
             throw $this->createAccessDeniedException('User is not authenticated.');
         }
 
-        $dto = $this->service->buildIncomeListViewData(new \DateTimeImmutable());
+        $dto = $this->service->buildIncomeListViewData($request->query->all(), new \DateTimeImmutable());
+        $context = $dto->toArray();
+        if ($this->isGranted('ROLE_INCOMER')) {
+            $incomeDraft = $this->service->createIncomeDraft();
+            $context['incomeForm'] = $this->createForm(DashboardIncomeType::class, $incomeDraft, [
+                'action' => $this->generateUrl('app_dashboard_incomes_create'),
+            ])->createView();
+        }
 
-        return $this->render('dashboard/incomes.html.twig', $dto->toArray());
+        return $this->render('dashboard/incomes.html.twig', $context);
+    }
+
+    #[Route('/dashboard/incomes/create', name: 'app_dashboard_incomes_create', methods: ['POST'])]
+    public function createIncome(Request $request): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('User is not authenticated.');
+        }
+
+        if (!$this->isGranted('ROLE_INCOMER')) {
+            throw $this->createAccessDeniedException('Income creation is allowed for incomer role only.');
+        }
+
+        $draft = $this->service->createIncomeDraft();
+        $form = $this->createForm(DashboardIncomeType::class, $draft);
+        $form->handleRequest($request);
+
+        if (!$form->isSubmitted() || !$form->isValid()) {
+            if ($request->isXmlHttpRequest()) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $this->collectFirstFormError($form) ?? $this->translator->trans('income.form_invalid'),
+                ], 422);
+            }
+
+            $this->addFlash('error', $this->collectFirstFormError($form) ?? 'income.form_invalid');
+
+            return $this->redirect($this->resolveIncomeRedirectPath($request));
+        }
+
+        $result = $this->service->createIncome($user, $draft);
+        if (!$result->success) {
+            if ($request->isXmlHttpRequest()) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $result->errorMessage ?? $this->translator->trans('income.unable_create'),
+                ], 422);
+            }
+
+            $this->addFlash('error', $result->errorMessage ?? 'income.unable_create');
+
+            return $this->redirect($this->resolveIncomeRedirectPath($request));
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return new JsonResponse([
+                'success' => true,
+                'message' => $this->translator->trans('flash.income_added'),
+            ]);
+        }
+
+        $this->addFlash('success', 'flash.income_added');
+
+        return $this->redirect($this->resolveIncomeRedirectPath($request));
+    }
+
+    #[Route('/dashboard/incomes/{id}/edit', name: 'app_dashboard_incomes_edit', methods: ['GET', 'POST'])]
+    public function editIncome(int $id, Request $request): Response
+    {
+        if (!$this->isGranted('ROLE_INCOMER')) {
+            throw $this->createAccessDeniedException('Income edit is allowed for incomer role only.');
+        }
+
+        $income = $this->incomeRepository->find($id);
+        if (!$income instanceof Income) {
+            throw $this->createNotFoundException('Income not found.');
+        }
+
+        $draft = $this->service->createIncomeDraftFromIncome($income);
+        $form = $this->createForm(DashboardIncomeType::class, $draft);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $result = $this->service->updateIncome($income, $draft);
+            if ($result->success) {
+                $this->addFlash('success', 'income.updated');
+
+                return $this->redirectToRoute('app_dashboard_incomes', [
+                    'month' => $income->getCreatedAt()->format('Y-m'),
+                ]);
+            }
+
+            $this->addFlash('error', $result->errorMessage ?? 'income.unable_update');
+        }
+
+        return $this->render('dashboard/income_edit.html.twig', [
+            'form' => $form->createView(),
+            'income' => $income,
+        ]);
+    }
+
+    #[Route('/dashboard/incomes/{id}/delete', name: 'app_dashboard_incomes_delete', methods: ['POST'])]
+    public function deleteIncome(int $id, Request $request): Response
+    {
+        if (!$this->isGranted('ROLE_INCOMER')) {
+            throw $this->createAccessDeniedException('Income delete is allowed for incomer role only.');
+        }
+
+        $income = $this->incomeRepository->find($id);
+        if (!$income instanceof Income) {
+            throw $this->createNotFoundException('Income not found.');
+        }
+
+        if (!$this->isCsrfTokenValid('delete_income_'.$income->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+        } else {
+            $month = $income->getCreatedAt()->format('Y-m');
+            $this->service->deleteIncome($income);
+            $this->addFlash('success', 'income.deleted');
+
+            return $this->redirectToRoute('app_dashboard_incomes', ['month' => $month]);
+        }
+
+        return $this->redirectToRoute('app_dashboard_incomes');
     }
 
     #[Route('/dashboard/spends', name: 'app_dashboard_spends', methods: ['GET'])]
@@ -258,5 +370,16 @@ final class DashboardController extends AbstractController
         }
 
         return null;
+    }
+
+    private function resolveIncomeRedirectPath(Request $request): string
+    {
+        $target = $request->request->get('_redirect');
+        $target = is_string($target) ? trim($target) : '';
+        if ('' !== $target && str_starts_with($target, '/')) {
+            return $target;
+        }
+
+        return $this->generateUrl('app_dashboard');
     }
 }

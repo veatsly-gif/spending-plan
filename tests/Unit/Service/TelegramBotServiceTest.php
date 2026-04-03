@@ -129,6 +129,74 @@ final class TelegramBotServiceTest extends TestCase
         );
     }
 
+    public function testSendMessageWithInlineButtonsSendsCallbackKeyboardPayload(): void
+    {
+        $capturedPayload = [];
+
+        $httpClient = new MockHttpClient(static function (string $method, string $url, array $options) use (&$capturedPayload): MockResponse {
+            self::assertSame('POST', $method);
+            self::assertSame('https://api.telegram.org/botinline-token/sendMessage', $url);
+            $capturedPayload = self::extractPayload($options);
+
+            return new MockResponse(
+                json_encode(['ok' => true, 'result' => ['message_id' => 1]], JSON_THROW_ON_ERROR),
+                ['http_code' => 200],
+            );
+        });
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('info');
+
+        $service = new TelegramBotService($httpClient, $logger, 'inline-token');
+        $service->sendMessageWithInlineButtons(
+            '48995172',
+            'Please confirm',
+            [
+                ['label' => 'Already done', 'callback_data' => 'nf|a|2026-04|done'],
+                ['label' => 'Remind me later', 'callback_data' => 'nf|a|2026-04|remind_later'],
+            ],
+        );
+
+        self::assertSame('Please confirm', $capturedPayload['text'] ?? null);
+        self::assertSame(
+            'Already done',
+            $capturedPayload['reply_markup']['inline_keyboard'][0][0]['text'] ?? null
+        );
+        self::assertSame(
+            'nf|a|2026-04|done',
+            $capturedPayload['reply_markup']['inline_keyboard'][0][0]['callback_data'] ?? null
+        );
+    }
+
+    public function testAnswerCallbackQueryUsesTelegramEndpoint(): void
+    {
+        $capturedMethod = null;
+        $capturedUrl = null;
+        $capturedPayload = [];
+
+        $httpClient = new MockHttpClient(static function (string $method, string $url, array $options) use (&$capturedMethod, &$capturedUrl, &$capturedPayload): MockResponse {
+            $capturedMethod = $method;
+            $capturedUrl = $url;
+            $capturedPayload = self::extractPayload($options);
+
+            return new MockResponse(
+                json_encode(['ok' => true, 'result' => true], JSON_THROW_ON_ERROR),
+                ['http_code' => 200],
+            );
+        });
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('info');
+
+        $service = new TelegramBotService($httpClient, $logger, 'cb-token');
+        $service->answerCallbackQuery('callback-123', 'Done');
+
+        self::assertSame('POST', $capturedMethod);
+        self::assertSame('https://api.telegram.org/botcb-token/answerCallbackQuery', $capturedUrl);
+        self::assertSame('callback-123', $capturedPayload['callback_query_id'] ?? null);
+        self::assertSame('Done', $capturedPayload['text'] ?? null);
+    }
+
     /**
      * @param array<string, mixed> $options
      *

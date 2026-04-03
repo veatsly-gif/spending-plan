@@ -8,6 +8,7 @@ use App\Entity\TelegramUser;
 use App\Entity\User;
 use App\Repository\ApiLimitRepository;
 use App\Repository\TelegramUserRepository;
+use App\Service\AdminNotificationTriggerService;
 use App\Service\DeepLTranslationService;
 use App\Service\GeorgianTextNormalizer;
 use App\Service\Notification\NotificationActionService;
@@ -249,6 +250,40 @@ final class TelegramUpdateProcessorTest extends TestCase
         }
     }
 
+    public function testAuthorizedStartRunsAdminTriggerService(): void
+    {
+        $linkedUser = (new User())
+            ->setUsername('admin')
+            ->setRoles(['ROLE_ADMIN'])
+            ->setPassword('hash');
+
+        $existing = (new TelegramUser())
+            ->setTelegramId('48995172')
+            ->setFirstName('Sergey')
+            ->setStatus(TelegramUser::STATUS_AUTHORIZED)
+            ->setUser($linkedUser);
+
+        $repository = $this->createTelegramUserRepositoryMock();
+        $repository->expects($this->once())->method('findOneBy')->willReturn($existing);
+        $repository->expects($this->never())->method('save');
+
+        $triggerService = $this->createAdminNotificationTriggerServiceMock();
+        $triggerService
+            ->expects($this->once())
+            ->method('run')
+            ->with(
+                $this->identicalTo($linkedUser),
+                $this->isInstanceOf(\DateTimeImmutable::class)
+            );
+
+        $requests = [];
+        $processor = $this->createProcessor($repository, $requests, triggerService: $triggerService);
+        $processor->process($this->buildUpdate('/start', 48995172, 48995172, 'Sergey', null));
+
+        self::assertCount(1, $requests);
+        self::assertSame('👇', $requests[0]['json']['text'] ?? null);
+    }
+
     public function testCallbackActionMarksReminderAsDoneForAuthorizedLinkedUser(): void
     {
         $linkedUser = (new User())
@@ -406,6 +441,7 @@ final class TelegramUpdateProcessorTest extends TestCase
         array &$requests,
         string $generatedUrl = 'https://example.test/telegram/mini/spend?token=test-token',
         ?callable $deepLResponder = null,
+        ?AdminNotificationTriggerService $triggerService = null,
     ): TelegramUpdateProcessor {
         $httpClient = new MockHttpClient(static function (string $method, string $url, array $options) use (&$requests): MockResponse {
             $json = self::extractPayload($options);
@@ -428,6 +464,8 @@ final class TelegramUpdateProcessorTest extends TestCase
         $notificationActionService = new NotificationActionService(new RedisStore('invalid-dsn'));
         $conversationStateService = new TelegramConversationStateService(new RedisStore('invalid-dsn'));
         $georgianTextNormalizer = new GeorgianTextNormalizer();
+        $triggerService ??= $this->createAdminNotificationTriggerServiceMock();
+        $triggerService->method('run');
         $apiLimitRepository = $this->getMockBuilder(ApiLimitRepository::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['save'])
@@ -450,6 +488,7 @@ final class TelegramUpdateProcessorTest extends TestCase
         return new TelegramUpdateProcessor(
             $repository,
             $bot,
+            $triggerService,
             $notificationActionService,
             $miniAppTokenService,
             $conversationStateService,
@@ -458,6 +497,17 @@ final class TelegramUpdateProcessorTest extends TestCase
             $urlGenerator,
             new NullLogger()
         );
+    }
+
+    /**
+     * @return MockObject&AdminNotificationTriggerService
+     */
+    private function createAdminNotificationTriggerServiceMock(): AdminNotificationTriggerService
+    {
+        return $this->getMockBuilder(AdminNotificationTriggerService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['run'])
+            ->getMock();
     }
 
     /**

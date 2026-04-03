@@ -96,6 +96,11 @@
                     <a class="btn btn-ghost" href="{{ path('app_dashboard_incomes') }}">
                         {{ 'dashboard.open_incomes'|trans }}
                     </a>
+                    {% if incomeForm is defined %}
+                        <a class="btn" href="#" data-income-modal-open>
+                            {{ 'dashboard.add_income_button'|trans }}
+                        </a>
+                    {% endif %}
                 </div>
             </article>
         </section>
@@ -119,20 +124,8 @@
         </section>
     {% endif %}
 
-    {% if isIncomer and incomeForm is defined %}
-        <section class="panel reveal delay" style="margin-top: 16px;">
-            <span class="kicker">{{ 'dashboard.income'|trans }}</span>
-            <h2>{{ 'dashboard.add_income'|trans }}</h2>
-            {{ form_start(incomeForm) }}
-                {{ form_row(incomeForm.amount) }}
-                {{ form_row(incomeForm.currency) }}
-                {{ form_row(incomeForm.comment) }}
-                {{ form_row(incomeForm.convertToGel) }}
-                <div class="actions">
-                    <button type="submit">{{ 'dashboard.add_income_button'|trans }}</button>
-                </div>
-            {{ form_end(incomeForm) }}
-        </section>
+    {% if incomeForm is defined %}
+        {% include 'dashboard/_income_modal.html.twig' with {incomeForm: incomeForm} %}
     {% endif %}
 
 {% endblock %}
@@ -149,6 +142,15 @@
             added: {{ 'spend.js.added'|trans|json_encode|raw }},
             saved: {{ 'spend.js.saved'|trans|json_encode|raw }}
         };
+        window.dashboardIncomeFormI18n = {
+            saving: {{ 'income.js.saving'|trans|json_encode|raw }},
+            unableAdd: {{ 'income.js.unable_add'|trans|json_encode|raw }},
+            networkError: {{ 'income.js.network_error'|trans|json_encode|raw }},
+            addIncome: {{ 'dashboard.add_income_button'|trans|json_encode|raw }},
+            adding: {{ 'income.js.adding'|trans|json_encode|raw }},
+            added: {{ 'income.js.added'|trans|json_encode|raw }}
+        };
     </script>
     <script src="{{ asset('js/dashboard-spend-form.js') }}"></script>
+    <script src="{{ asset('js/dashboard-income-modal.js') }}"></script>
 {% endblock %}
