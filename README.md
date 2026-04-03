@@ -49,8 +49,8 @@ The `test` profile starts `postgres_test` (needed for `make test`). Omit `--prof
 ## Production (Docker on a VPS)
 
 1. **DNS**: Point `shepsility.duckdns.org` (or your hostname) A/AAAA records to the server’s public IP.
-2. **Tag deploy**: Prefer checking out a **git tag** on the server (for example `v0.1.0`) so production matches a known revision.
-3. **Config**: Copy `.env.example` to `.env` and set strong `APP_SECRET`, PostgreSQL credentials, `DATABASE_URL` (host name `postgres` inside Compose), `REDIS_DSN` (`redis://redis:6379`), `DEFAULT_URI` (public URL, e.g. `http://YOUR_IP` or `https://shepsility.duckdns.org`), `SYMFONY_TRUSTED_PROXIES` as in `.env.example`, and optional Telegram/DeepL keys.
+2. **Tag deploy**: On the server, `git fetch` and `git checkout <tag>` (for example `v0.1.2`) so production matches a known revision.
+3. **Config**: Copy `.env.example` to `.env` and set strong `APP_SECRET`, PostgreSQL credentials, `DATABASE_URL` (host name `postgres` inside Compose), `REDIS_DSN` (`redis://redis:6379`), `DEFAULT_URI` (public URL, e.g. `http://YOUR_IP` or `https://shepsility.duckdns.org`), `SYMFONY_TRUSTED_PROXIES` as in `.env.example`, and optional Telegram/DeepL keys. The production compose file mounts `./.env` into the PHP container so Symfony can read it at runtime.
 4. **Run**:
 
 ```bash
