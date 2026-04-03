@@ -48,17 +48,17 @@ The `test` profile starts `postgres_test` (needed for `make test`). Omit `--prof
 
 ## Production (Docker on a VPS)
 
-1. **DNS**: Point `shepsility.duckdns.org` (or your hostname) A/AAAA records to the server’s public IP.
+1. **DNS**: Point your public hostname’s A/AAAA records at the server’s IP. Wait for DNS to propagate before expecting TLS to work.
 2. **Tag deploy**: On the server, `git fetch` and `git checkout <tag>` (for example `v0.1.2`) so production matches a known revision.
-3. **Config**: Copy `.env.example` to `.env` and set strong `APP_SECRET`, PostgreSQL credentials, `DATABASE_URL` (host name `postgres` inside Compose), `REDIS_DSN` (`redis://redis:6379`), `DEFAULT_URI` (public URL, e.g. `http://YOUR_IP` or `https://shepsility.duckdns.org`), `SYMFONY_TRUSTED_PROXIES` as in `.env.example`, and optional Telegram/DeepL keys. The production compose file mounts `./.env` into the PHP container so Symfony can read it at runtime.
-4. **Run**:
+3. **Config**: Copy `.env.example` to `.env` and set strong `APP_SECRET`, PostgreSQL credentials, `DATABASE_URL` (host name `postgres` inside Compose), `REDIS_DSN` (`redis://redis:6379`), `SYMFONY_TRUSTED_PROXIES` as in `.env.example`, **`PUBLIC_HOST`** and **`DEFAULT_URI`** for HTTPS (see step 4), and optional Telegram/DeepL keys. The production compose file mounts `./.env` into the PHP container so Symfony can read it at runtime.
+4. **HTTPS (TLS)**: On a typical VPS (including providers like Aeza), TLS is not issued from a hosting panel for this Docker setup—you use a **free** public certificate. This project uses **Caddy** in `docker-compose.prod.yaml`, which obtains and renews certificates from **Let’s Encrypt** (ACME) automatically. Set **`PUBLIC_HOST`** in the server-only `.env` to your public hostname (no `https://`), and set **`DEFAULT_URI`** to the matching HTTPS base URL (`https://` plus the same host). Keep real hostnames out of git; they live only in `.env` on the machine. Open ports **80** and **443** on the host firewall so HTTP-01 validation can succeed.
+5. **Run**:
 
 ```bash
 docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
 docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
-5. **Caddy / HTTPS**: The default `docker/caddy/Caddyfile` serves HTTP on port 80 so you can validate with the server IP before DNS works. After DuckDNS points to this host, edit the Caddyfile to use the `shepsility.duckdns.org { ... }` site block (see comments in that file) and reload Caddy; set `DEFAULT_URI` to `https://shepsility.duckdns.org`.
 6. **Firewall** (if using `ufw`): allow `22`, `80`, and `443`.
 
 Open:

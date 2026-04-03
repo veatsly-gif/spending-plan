@@ -1,11 +1,8 @@
-# HTTP on all interfaces. After DuckDNS A/AAAA points to this host, you can switch to the
-# shepsility.duckdns.org { ... } block for automatic HTTPS (see README).
-:80 {
+# Production only: set PUBLIC_HOST in the server .env (hostname without scheme, no trailing slash).
+# Caddy requests a free certificate from Let's Encrypt (ACME HTTP-01 on port 80).
+# Do not commit real hostnames here; keep them in .env on the VPS.
+
+{$PUBLIC_HOST} {
 	encode gzip
 	reverse_proxy nginx:80
 }
-
-# shepsility.duckdns.org {
-#	encode gzip
-#	reverse_proxy nginx:80
-# }
