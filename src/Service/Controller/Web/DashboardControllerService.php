@@ -27,6 +27,7 @@ use App\Repository\SpendRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\Income\IncomeRateService;
 use App\Service\MonthlyBalanceCacheService;
+use App\Util\RussianCalendarFormatter;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class DashboardControllerService
@@ -61,9 +62,13 @@ final class DashboardControllerService
     {
         $isIncomer = $this->hasRole($user, 'ROLE_INCOMER');
         $monthStart = $now->modify('first day of this month')->setTime(0, 0);
+        $today = $now->setTime(0, 0);
         $balanceSnapshot = $this->monthlyBalanceCacheService->getOrRefresh($now);
         $ratesSnapshot = $this->incomeRateService->getLiveRates();
         $monthSpends = $this->spendRepository->findForMonth($monthStart);
+        $liveRates = $this->incomeRateService->getLiveGelRates() ?? ['GEL' => '1.0000'];
+        $currentTimePlan = $this->resolveCurrentTimeBasedPlan($today);
+        $currentTimePlanProgress = $this->buildPlanProgress($currentTimePlan, $monthSpends, $liveRates);
 
         $recentSpends = array_slice($monthSpends, 0, 3);
         $recentSpendItems = array_map(fn (Spend $spend): DashboardSpendItemDto => $this->mapSpend($spend), $recentSpends);
@@ -71,7 +76,7 @@ final class DashboardControllerService
         return new DashboardPageViewDto(
             $isIncomer,
             new DashboardIncomeWidgetDto(
-                $monthStart->format('F Y'),
+                RussianCalendarFormatter::monthYear($monthStart),
                 $balanceSnapshot->totalIncomeGel,
                 $balanceSnapshot->regularAndPlannedGel,
                 $balanceSnapshot->availableToSpendGel,
@@ -80,7 +85,13 @@ final class DashboardControllerService
                 null !== $ratesSnapshot ? $ratesSnapshot->updatedAt->format('Y-m-d H:i') : null,
             ),
             new DashboardSpendWidgetDto(
-                $monthStart->format('F Y'),
+                RussianCalendarFormatter::monthYear($monthStart),
+                $currentTimePlan?->getName(),
+                $currentTimePlanProgress['spentGel'],
+                $currentTimePlanProgress['limitGel'],
+                $currentTimePlanProgress['percent'],
+                $currentTimePlanProgress['barPercent'],
+                $currentTimePlanProgress['tone'],
                 $balanceSnapshot->monthSpentGel,
                 $balanceSnapshot->monthLimitGel,
                 $balanceSnapshot->monthSpendProgressPercent,
@@ -188,7 +199,7 @@ final class DashboardControllerService
         $monthTabs = $this->buildIncomeMonthTabs($monthStart, $monthKey, $now);
 
         return new DashboardIncomeListPageDto(
-            $monthStart->format('F Y'),
+            RussianCalendarFormatter::monthYear($monthStart),
             $monthKey,
             $monthStart->modify('first day of previous month')->format('Y-m'),
             $monthStart->modify('first day of next month')->format('Y-m'),
@@ -309,7 +320,7 @@ final class DashboardControllerService
         $monthTabs = $this->buildSpendMonthTabs($monthStart, $monthKey, $now);
 
         return new DashboardSpendListPageDto(
-            $monthStart->format('F Y'),
+            RussianCalendarFormatter::monthYear($monthStart),
             $monthKey,
             $monthStart->modify('first day of previous month')->format('Y-m'),
             $monthStart->modify('first day of next month')->format('Y-m'),
@@ -638,6 +649,119 @@ final class DashboardControllerService
         );
     }
 
+    private function resolveCurrentTimeBasedPlan(\DateTimeImmutable $day): ?SpendingPlan
+    {
+        $plans = $this->spendingPlanRepository->findForSpendSelection($day);
+        foreach ($plans as $plan) {
+            if ($plan->isDateBasedLimitPlanType()) {
+                continue;
+            }
+
+            if ($plan->getDateFrom() <= $day && $plan->getDateTo() >= $day) {
+                return $plan;
+            }
+        }
+
+        return $this->spendingPlanRepository->findBestForDate($day);
+    }
+
+    /**
+     * @param list<Spend> $monthSpends
+     * @param array<string, string> $liveRates
+     * @return array{
+     *     spentGel: string,
+     *     limitGel: string,
+     *     percent: int,
+     *     barPercent: int,
+     *     tone: string
+     * }
+     */
+    private function buildPlanProgress(?SpendingPlan $plan, array $monthSpends, array $liveRates): array
+    {
+        if (!$plan instanceof SpendingPlan) {
+            return [
+                'spentGel' => '0.00',
+                'limitGel' => '0.00',
+                'percent' => 0,
+                'barPercent' => 0,
+                'tone' => 'ok',
+            ];
+        }
+
+        $limitGel = $this->convertToGel(
+            (float) $plan->getLimitAmount(),
+            (string) $plan->getCurrency()?->getCode(),
+            $liveRates
+        ) ?? 0.0;
+
+        $planId = $plan->getId();
+        $spentGel = 0.0;
+        foreach ($monthSpends as $spend) {
+            if (!$spend->getSpendingPlan() instanceof SpendingPlan) {
+                continue;
+            }
+
+            if ($spend->getSpendingPlan()->getId() !== $planId) {
+                continue;
+            }
+
+            $converted = $this->convertToGel(
+                (float) $spend->getAmount(),
+                (string) $spend->getCurrency()?->getCode(),
+                $liveRates
+            );
+            if (null === $converted) {
+                continue;
+            }
+
+            $spentGel += $converted;
+        }
+
+        $progressPercent = 0;
+        if ($limitGel > 0) {
+            $progressPercent = (int) round(($spentGel / $limitGel) * 100);
+        } elseif ($spentGel > 0) {
+            $progressPercent = 100;
+        }
+
+        $progressTone = 'ok';
+        if ($progressPercent > 90) {
+            $progressTone = 'danger';
+        } elseif ($progressPercent > 80) {
+            $progressTone = 'warning';
+        }
+
+        return [
+            'spentGel' => number_format($spentGel, 2, '.', ''),
+            'limitGel' => number_format($limitGel, 2, '.', ''),
+            'percent' => max(0, $progressPercent),
+            'barPercent' => max(0, min(100, $progressPercent)),
+            'tone' => $progressTone,
+        ];
+    }
+
+    /**
+     * @param array<string, string> $liveRates
+     */
+    private function convertToGel(float $amount, string $currencyCode, array $liveRates): ?float
+    {
+        $code = strtoupper(trim($currencyCode));
+        if ('' === $code) {
+            return null;
+        }
+
+        if ('GEL' === $code) {
+            return $amount;
+        }
+
+        $rate = $liveRates[$code] ?? null;
+        if (null === $rate || !is_numeric($rate)) {
+            return null;
+        }
+
+        return $amount * (float) $rate;
+    }
+
     private function dispatchMonthlyBalanceRefresh(string $monthKey, string $source): void
     {
         $this->eventDispatcher->dispatch(
@@ -808,7 +932,7 @@ final class DashboardControllerService
         foreach ($monthKeys as $monthKey) {
             $tabs[] = new DashboardMonthTabDto(
                 $monthKey,
-                $this->monthStart($monthKey)->format('F Y'),
+                RussianCalendarFormatter::monthYear($this->monthStart($monthKey)),
                 $monthKey === $selectedMonthKey,
             );
         }
@@ -841,7 +965,7 @@ final class DashboardControllerService
         foreach ($monthKeys as $monthKey) {
             $tabs[] = new DashboardMonthTabDto(
                 $monthKey,
-                $this->monthStart($monthKey)->format('F Y'),
+                RussianCalendarFormatter::monthYear($this->monthStart($monthKey)),
                 $monthKey === $selectedMonthKey,
             );
         }

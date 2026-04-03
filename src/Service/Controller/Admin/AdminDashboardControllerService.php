@@ -8,6 +8,7 @@ use App\DTO\Controller\Admin\AdminDashboardViewDto;
 use App\DTO\Controller\Admin\AdminSpendingPlanPopupDto;
 use App\Repository\SpendingPlanRepository;
 use App\Repository\TelegramUserRepository;
+use App\Util\RussianCalendarFormatter;
 
 final class AdminDashboardControllerService
 {
@@ -22,7 +23,7 @@ final class AdminDashboardControllerService
 
         return new AdminDashboardViewDto(
             $telegramUserRepository->countPending(),
-            $nextMonthStart->format('F Y'),
+            RussianCalendarFormatter::monthYear($nextMonthStart),
             $spendingPlanRepository->countSystemPlansForPeriod($nextMonthStart, $nextMonthEnd),
             new AdminSpendingPlanPopupDto(false, '', '', '')
         );

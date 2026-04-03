@@ -44,6 +44,7 @@ final class TelegramMiniAppController extends AbstractController
         $form = $this->createForm(DashboardSpendType::class, $draft, [
             'action' => $this->generateUrl('app_telegram_mini_spend', ['token' => $token]),
             'spending_plan_choices' => $this->dashboardControllerService->getSpendPlanChoicesForDate($draft->getSpendDate()),
+            'compact_spending_plan_labels' => true,
         ]);
         $viewData = $this->dashboardControllerService->buildViewData($telegramUser->getUser(), new \DateTimeImmutable());
         $spendListData = $this->dashboardControllerService->buildSpendListViewData($request->query->all(), new \DateTimeImmutable());
@@ -84,6 +85,12 @@ final class TelegramMiniAppController extends AbstractController
                         'comment' => '',
                     ],
                     'widget' => [
+                        'currentTimePlanName' => $spendWidget->currentTimePlanName,
+                        'currentTimePlanSpentGel' => $spendWidget->currentTimePlanSpentGel,
+                        'currentTimePlanLimitGel' => $spendWidget->currentTimePlanLimitGel,
+                        'currentTimePlanProgressPercent' => $spendWidget->currentTimePlanProgressPercent,
+                        'currentTimePlanProgressBarPercent' => $spendWidget->currentTimePlanProgressBarPercent,
+                        'currentTimePlanProgressTone' => $spendWidget->currentTimePlanProgressTone,
                         'monthSpentGel' => $spendWidget->monthSpentGel,
                         'monthLimitGel' => $spendWidget->monthLimitGel,
                         'progressPercent' => $spendWidget->monthSpendProgressPercent,
@@ -153,6 +160,7 @@ final class TelegramMiniAppController extends AbstractController
         $form = $this->createForm(DashboardSpendType::class, $draft, [
             'action' => $this->generateUrl('app_telegram_mini_spend_edit', ['id' => $id, 'token' => $token]),
             'spending_plan_choices' => $this->dashboardControllerService->getSpendPlanChoicesForDate($draft->getSpendDate()),
+            'compact_spending_plan_labels' => true,
         ]);
         $form->handleRequest($request);
 

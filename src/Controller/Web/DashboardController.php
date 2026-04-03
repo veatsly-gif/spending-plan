@@ -284,6 +284,12 @@ final class DashboardController extends AbstractController
                     'comment' => '',
                 ],
                 'widget' => [
+                    'currentTimePlanName' => $spendWidget->currentTimePlanName,
+                    'currentTimePlanSpentGel' => $spendWidget->currentTimePlanSpentGel,
+                    'currentTimePlanLimitGel' => $spendWidget->currentTimePlanLimitGel,
+                    'currentTimePlanProgressPercent' => $spendWidget->currentTimePlanProgressPercent,
+                    'currentTimePlanProgressBarPercent' => $spendWidget->currentTimePlanProgressBarPercent,
+                    'currentTimePlanProgressTone' => $spendWidget->currentTimePlanProgressTone,
                     'monthSpentGel' => $spendWidget->monthSpentGel,
                     'monthLimitGel' => $spendWidget->monthLimitGel,
                     'progressPercent' => $spendWidget->monthSpendProgressPercent,

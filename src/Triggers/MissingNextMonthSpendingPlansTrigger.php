@@ -7,6 +7,7 @@ namespace App\Triggers;
 use App\Entity\User;
 use App\Repository\SpendingPlanRepository;
 use App\Service\SpendingPlanSuggestionCacheService;
+use App\Util\RussianCalendarFormatter;
 
 final class MissingNextMonthSpendingPlansTrigger implements NotificationTriggerInterface
 {
@@ -48,7 +49,7 @@ final class MissingNextMonthSpendingPlansTrigger implements NotificationTriggerI
 
         return [
             'monthKey' => $nextMonthKey,
-            'monthLabel' => $nextMonthStart->format('F Y'),
+            'monthLabel' => RussianCalendarFormatter::monthYear($nextMonthStart),
         ];
     }
 }

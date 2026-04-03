@@ -57,6 +57,8 @@
         }
         .sp-section { margin-top: 14px; }
         .actions { display: flex; gap: 8px; }
+        .actions--full { width: 100%; }
+        .actions--full > button { width: 100%; padding-top: 12px; padding-bottom: 12px; font-size: 1rem; }
         form > div { margin-bottom: 11px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; }
         input, select, textarea {
@@ -102,25 +104,107 @@
         .form-status-pending { color: #225d73; background: #e6f4fb; border: 1px solid #c8e5f3; }
         [data-spend-form].is-success-submit { animation: mini-pulse 0.75s ease; }
         .spend-widget.is-live-updated { animation: mini-flash 0.8s ease; }
-        .dash-progress-head {
+        .spend-widget { padding: 8px 10px; position: relative; }
+        .mini-progress-stack {
+            display: grid;
+            gap: 2px;
+            margin-top: 0;
+        }
+        .mini-progress-row {
             display: flex;
             justify-content: space-between;
-            gap: 10px;
-            align-items: flex-end;
+            align-items: center;
+            gap: 8px;
+            min-height: 22px;
+            padding: 0;
         }
-        .dash-big {
-            margin: 0;
-            font-family: "Space Grotesk", "Avenir Next", sans-serif;
-            font-size: 1.18rem;
+        .mini-progress-row + .mini-progress-row {
+            border-top: 1px solid #edf2ee;
+            padding-top: 2px;
+        }
+        .mini-progress-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mini-progress-value {
             color: var(--text);
+            font-size: 0.84rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
-        .dash-progress-track {
+        .mini-progress-name { color: var(--text); }
+        .mini-progress-details {
+            border: 1px solid #e8eeea;
+            border-radius: 10px;
+            background: #fcfefd;
+            padding: 7px 8px;
+            margin-top: 6px;
+        }
+        .mini-progress-details-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .mini-progress-details-row:last-of-type {
+            margin-bottom: 0;
+        }
+        .mini-progress-toggle {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            margin: 0;
+            width: 24px;
+            height: 24px;
+            border: 1px solid #d4e2dc;
+            background: #f7fbf9;
+            color: var(--accent-strong);
+            padding: 0;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            line-height: 1;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mini-progress-toggle .mini-progress-toggle-icon {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .mini-progress-toggle.is-open .mini-progress-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .mini-month-summary {
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .mini-month-summary.is-ok { color: #1f8d63; }
+        .mini-month-summary.is-warning { color: #d48518; }
+        .mini-month-summary.is-danger { color: #b13a3a; }
+        .mini-field-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 90px;
+            gap: 8px;
+            align-items: end;
+        }
+        .mini-field-row select {
+            padding: 7px 28px 7px 9px;
+            font-size: 0.9rem;
+            line-height: 1.2;
+        }
+        .mini-progress-track {
             width: 100%;
-            height: 12px;
+            height: 6px;
             border-radius: 999px;
             background: #e4ece8;
             overflow: hidden;
-            margin: 8px 0 6px;
+            margin-top: 4px;
         }
         .dash-progress-fill {
             display: block;
@@ -133,17 +217,6 @@
         .dash-progress-fill.is-ok { background: linear-gradient(90deg, #1f8d63 0%, #20a36d 100%); }
         .dash-progress-fill.is-warning { background: linear-gradient(90deg, #d48518 0%, #eb9f32 100%); }
         .dash-progress-fill.is-danger { background: linear-gradient(90deg, #b13a3a 0%, #da4d4d 100%); }
-        .dash-today-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            align-items: baseline;
-            padding: 8px 10px;
-            border: 1px solid #e8eeea;
-            border-radius: 10px;
-            background: #fcfefd;
-            margin: 8px 0;
-        }
         .dash-recent-table {
             margin-top: 8px;
             overflow-x: auto;
@@ -267,6 +340,9 @@
         @media (prefers-reduced-motion: reduce) {
             .dash-progress-fill { animation: none; }
         }
+        @media (max-width: 560px) {
+            .mini-field-row { grid-template-columns: minmax(0, 1fr) 88px; }
+        }
     </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%2292%22>₾</text></svg>">
 </head>
@@ -289,61 +365,60 @@
                     <a class="btn btn-ghost {{ currentLocale starts with 'ru' ? 'is-active' : '' }}" href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}">RU</a>
                 </div>
             </div>
-            <h1>{{ 'telegram.mini_spend.heading'|trans }}</h1>
-            <p>{{ 'telegram.mini_spend.description'|trans }}</p>
 
             <section class="metric spend-widget reveal delay" data-spend-widget>
-                <h3>{{ 'dashboard.spends_for_month'|trans({'%month%': spendWidget.monthLabel}) }}</h3>
-                <div class="dash-progress-head">
-                    <div>
-                        <p class="subtle">{{ 'dashboard.month_spent'|trans }}</p>
-                        <p class="dash-big" data-spend-widget-month>{{ spendWidget.monthSpentGel }} GEL</p>
+                {% set currentPlanName = spendWidget.currentTimePlanName ?: ('telegram.mini_spend.no_current_plan'|trans) %}
+                <div class="mini-progress-stack">
+                    <div class="mini-progress-row">
+                        <span class="mini-progress-label" data-spend-widget-plan-header>
+                            {{ 'telegram.mini_spend.progress_of_plan'|trans({'%plan%': currentPlanName}) }}
+                        </span>
+                        <span class="mini-progress-value">
+                            <span data-spend-widget-plan-spent>{{ spendWidget.currentTimePlanSpentGel }}</span> /
+                            <span data-spend-widget-plan-limit>{{ spendWidget.currentTimePlanLimitGel }}</span> GEL
+                            · <strong data-spend-widget-plan-progress-text>{{ spendWidget.currentTimePlanProgressPercent }}%</strong>
+                        </span>
                     </div>
-                    <div style="text-align: right;">
-                        <p class="subtle">{{ 'dashboard.month_limit'|trans }}</p>
-                        <p class="dash-big" data-spend-widget-limit>{{ spendWidget.monthLimitGel }} GEL</p>
+                    <div class="mini-progress-track">
+                        <span
+                            class="dash-progress-fill is-{{ spendWidget.currentTimePlanProgressTone }}"
+                            style="--progress-target: {{ spendWidget.currentTimePlanProgressBarPercent }}%; width: {{ spendWidget.currentTimePlanProgressBarPercent }}%;"
+                            data-spend-widget-plan-progress-bar
+                        ></span>
+                    </div>
+                    <div class="mini-progress-row">
+                        <span class="mini-progress-label">{{ 'telegram.mini_spend.for_month'|trans }}</span>
+                        <span
+                            class="mini-month-summary is-{{ spendWidget.monthSpendProgressTone }}"
+                            data-spend-widget-month-summary
+                        >
+                            <span data-spend-widget-month-spent>{{ spendWidget.monthSpentGel }}</span> /
+                            <span data-spend-widget-month-limit>{{ spendWidget.monthLimitGel }}</span> GEL
+                        </span>
                     </div>
                 </div>
-                <div class="dash-progress-track">
-                    <span
-                        class="dash-progress-fill is-{{ spendWidget.monthSpendProgressTone }}"
-                        style="--progress-target: {{ spendWidget.monthSpendProgressBarPercent }}%; width: {{ spendWidget.monthSpendProgressBarPercent }}%;"
-                        data-spend-widget-progress-bar
-                    ></span>
-                </div>
-                <p class="subtle">
-                    {{ 'dashboard.progress_to_limit'|trans }}:
-                    <strong data-spend-widget-progress-text>{{ spendWidget.monthSpendProgressPercent }}%</strong>
-                </p>
-                <div class="dash-today-row">
-                    <span>{{ 'dashboard.spends_today'|trans }}</span>
-                    <strong data-spend-widget-today>{{ spendWidget.todaySpentGel }} GEL</strong>
-                </div>
-                <div class="dash-recent-table">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>{{ 'dashboard.table.amount'|trans }}</th>
-                            <th>{{ 'dashboard.table.datetime'|trans }}</th>
-                            <th>{{ 'dashboard.table.user'|trans }}</th>
-                            <th>{{ 'dashboard.table.description'|trans }}</th>
-                        </tr>
-                        </thead>
-                        <tbody data-spend-widget-recent>
-                        {% for spend in spendWidget.recentSpends %}
-                            <tr>
-                                <td>{{ spend.amount }} {{ spend.currencyCode }}</td>
-                                <td>{{ spend.createdAtLabel }}</td>
-                                <td>{{ spend.username }}</td>
-                                <td>{{ spend.comment ?: ('common.na'|trans) }}</td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="4">{{ 'dashboard.no_spends_yet'|trans }}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <button
+                    type="button"
+                    class="mini-progress-toggle"
+                    data-progress-toggle
+                    data-expanded="0"
+                    aria-label="{{ 'telegram.mini_spend.show_progress_details'|trans }}"
+                    title="{{ 'telegram.mini_spend.show_progress_details'|trans }}"
+                >
+                    <span class="mini-progress-toggle-icon">⌄</span>
+                </button>
+                <div class="mini-progress-details" data-progress-details hidden>
+                    <div class="mini-progress-details-row">
+                        <span class="mini-progress-label">{{ 'telegram.mini_spend.month_progress'|trans({'%month%': spendWidget.monthLabel}) }}</span>
+                        <span class="mini-progress-value" data-spend-widget-month-progress-text>{{ spendWidget.monthSpendProgressPercent }}%</span>
+                    </div>
+                    <div class="mini-progress-track">
+                        <span
+                            class="dash-progress-fill is-{{ spendWidget.monthSpendProgressTone }}"
+                            style="--progress-target: {{ spendWidget.monthSpendProgressBarPercent }}%; width: {{ spendWidget.monthSpendProgressBarPercent }}%;"
+                            data-spend-widget-month-progress-bar
+                        ></span>
+                    </div>
                 </div>
             </section>
 
@@ -373,11 +448,13 @@
                 <p class="form-status" data-spend-feedback hidden></p>
                 {{ form_start(spendForm, {'attr': {'data-spend-form': '1'}}) }}
                     {{ form_row(spendForm.amount) }}
-                    {{ form_row(spendForm.currency) }}
-                    {{ form_row(spendForm.spendingPlan) }}
-                    {{ form_row(spendForm.spendDate) }}
                     {{ form_row(spendForm.comment) }}
-                    <div class="actions">
+                    <div class="mini-field-row">
+                        {{ form_row(spendForm.spendingPlan) }}
+                        {{ form_row(spendForm.currency) }}
+                    </div>
+                    {{ form_row(spendForm.spendDate) }}
+                    <div class="actions actions--full">
                         <button type="submit" data-spend-submit>{{ 'dashboard.add_spend_button'|trans }}</button>
                     </div>
                 {{ form_end(spendForm) }}
@@ -471,8 +548,10 @@
             adding: {{ 'spend.js.adding'|trans|json_encode|raw }},
             added: {{ 'spend.js.added'|trans|json_encode|raw }},
             saved: {{ 'spend.js.saved'|trans|json_encode|raw }},
-            noSpendsYet: {{ 'dashboard.no_spends_yet'|trans|json_encode|raw }},
-            na: {{ 'common.na'|trans|json_encode|raw }}
+            noCurrentPlan: {{ 'telegram.mini_spend.no_current_plan'|trans|json_encode|raw }},
+            progressOfPlan: {{ 'telegram.mini_spend.progress_of_plan'|trans({'%plan%': '__PLAN__'})|json_encode|raw }},
+            showProgressDetails: {{ 'telegram.mini_spend.show_progress_details'|trans|json_encode|raw }},
+            hideProgressDetails: {{ 'telegram.mini_spend.hide_progress_details'|trans|json_encode|raw }}
         };
     </script>
     <script>
@@ -484,6 +563,7 @@
 
             function init() {
                 setupTabs();
+                setupProgressToggle();
 
                 const form = document.querySelector("[data-spend-form]");
                 if (!(form instanceof HTMLFormElement)) {
@@ -503,9 +583,7 @@
                     networkError: typeof i18n.networkError === "string" ? i18n.networkError : "Network error while adding spend.",
                     addSpend: typeof i18n.addSpend === "string" ? i18n.addSpend : "Add spend",
                     adding: typeof i18n.adding === "string" ? i18n.adding : "Adding...",
-                    added: typeof i18n.added === "string" ? i18n.added : "Added ✓",
-                    noSpendsYet: typeof i18n.noSpendsYet === "string" ? i18n.noSpendsYet : "No spends yet.",
-                    na: typeof i18n.na === "string" ? i18n.na : "n/a"
+                    added: typeof i18n.added === "string" ? i18n.added : "Added ✓"
                 };
                 const defaultLabel = (submitBtn.textContent || labels.addSpend).trim() || labels.addSpend;
                 let feedbackTimer = null;
@@ -663,6 +741,33 @@
                 activate(defaultTab);
             }
 
+            function setupProgressToggle() {
+                const toggle = document.querySelector("[data-progress-toggle]");
+                const details = document.querySelector("[data-progress-details]");
+                if (!(toggle instanceof HTMLButtonElement) || !(details instanceof HTMLElement)) {
+                    return;
+                }
+
+                const i18n = window.dashboardSpendFormI18n || {};
+                const showText = typeof i18n.showProgressDetails === "string" ? i18n.showProgressDetails : "Show progress details";
+                const hideText = typeof i18n.hideProgressDetails === "string" ? i18n.hideProgressDetails : "Hide progress details";
+
+                function apply(expanded) {
+                    details.hidden = !expanded;
+                    toggle.dataset.expanded = expanded ? "1" : "0";
+                    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+                    toggle.classList.toggle("is-open", expanded);
+                    const label = expanded ? hideText : showText;
+                    toggle.setAttribute("aria-label", label);
+                    toggle.title = label;
+                }
+
+                apply(false);
+                toggle.addEventListener("click", function () {
+                    apply(toggle.dataset.expanded !== "1");
+                });
+            }
+
             function applyDefaults(form, defaults) {
                 form.reset();
                 setFieldValue(form, "amount", defaults.amount || "");
@@ -693,80 +798,85 @@
                     return;
                 }
                 const i18n = window.dashboardSpendFormI18n || {};
-                const noSpendsYet = typeof i18n.noSpendsYet === "string" ? i18n.noSpendsYet : "No spends yet.";
-                const na = typeof i18n.na === "string" ? i18n.na : "n/a";
+                const noCurrentPlan = typeof i18n.noCurrentPlan === "string" ? i18n.noCurrentPlan : "No current plan";
+                const progressTemplate = typeof i18n.progressOfPlan === "string" ? i18n.progressOfPlan : "Progress of __PLAN__";
 
                 const card = document.querySelector("[data-spend-widget]");
                 if (!(card instanceof HTMLElement)) {
                     return;
                 }
 
-                const monthNode = card.querySelector("[data-spend-widget-month]");
-                if (monthNode instanceof HTMLElement && typeof widget.monthSpentGel === "string") {
-                    monthNode.textContent = widget.monthSpentGel + " GEL";
+                const planName = typeof widget.currentTimePlanName === "string" && widget.currentTimePlanName.trim() !== ""
+                    ? widget.currentTimePlanName.trim()
+                    : noCurrentPlan;
+                const planHeaderNode = card.querySelector("[data-spend-widget-plan-header]");
+                if (planHeaderNode instanceof HTMLElement) {
+                    planHeaderNode.textContent = progressTemplate.replace("__PLAN__", planName);
                 }
 
-                const limitNode = card.querySelector("[data-spend-widget-limit]");
-                if (limitNode instanceof HTMLElement && typeof widget.monthLimitGel === "string") {
-                    limitNode.textContent = widget.monthLimitGel + " GEL";
+                const planSpentNode = card.querySelector("[data-spend-widget-plan-spent]");
+                if (planSpentNode instanceof HTMLElement && typeof widget.currentTimePlanSpentGel === "string") {
+                    planSpentNode.textContent = widget.currentTimePlanSpentGel;
                 }
 
-                const progressTextNode = card.querySelector("[data-spend-widget-progress-text]");
-                if (progressTextNode instanceof HTMLElement && Number.isFinite(Number(widget.progressPercent))) {
-                    progressTextNode.textContent = Math.round(Number(widget.progressPercent)) + "%";
+                const planLimitNode = card.querySelector("[data-spend-widget-plan-limit]");
+                if (planLimitNode instanceof HTMLElement && typeof widget.currentTimePlanLimitGel === "string") {
+                    planLimitNode.textContent = widget.currentTimePlanLimitGel;
                 }
 
-                const progressBarNode = card.querySelector("[data-spend-widget-progress-bar]");
-                if (progressBarNode instanceof HTMLElement) {
+                const planProgressTextNode = card.querySelector("[data-spend-widget-plan-progress-text]");
+                if (planProgressTextNode instanceof HTMLElement && Number.isFinite(Number(widget.currentTimePlanProgressPercent))) {
+                    planProgressTextNode.textContent = Math.round(Number(widget.currentTimePlanProgressPercent)) + "%";
+                }
+                const planProgressTextDetailsNode = card.querySelector("[data-spend-widget-plan-progress-text-details]");
+                if (planProgressTextDetailsNode instanceof HTMLElement && Number.isFinite(Number(widget.currentTimePlanProgressPercent))) {
+                    planProgressTextDetailsNode.textContent = Math.round(Number(widget.currentTimePlanProgressPercent)) + "%";
+                }
+
+                const planProgressBarNode = card.querySelector("[data-spend-widget-plan-progress-bar]");
+                if (planProgressBarNode instanceof HTMLElement) {
+                    if (Number.isFinite(Number(widget.currentTimePlanProgressBarPercent))) {
+                        const width = Math.max(0, Math.min(100, Math.round(Number(widget.currentTimePlanProgressBarPercent))));
+                        planProgressBarNode.style.setProperty("--progress-target", width + "%");
+                        planProgressBarNode.style.width = width + "%";
+                    }
+                    const tone = typeof widget.currentTimePlanProgressTone === "string" ? widget.currentTimePlanProgressTone : "ok";
+                    planProgressBarNode.classList.remove("is-ok", "is-warning", "is-danger");
+                    planProgressBarNode.classList.add(tone === "warning" || tone === "danger" ? "is-" + tone : "is-ok");
+                }
+
+                const monthSpentNode = card.querySelector("[data-spend-widget-month-spent]");
+                if (monthSpentNode instanceof HTMLElement && typeof widget.monthSpentGel === "string") {
+                    monthSpentNode.textContent = widget.monthSpentGel;
+                }
+
+                const monthLimitNode = card.querySelector("[data-spend-widget-month-limit]");
+                if (monthLimitNode instanceof HTMLElement && typeof widget.monthLimitGel === "string") {
+                    monthLimitNode.textContent = widget.monthLimitGel;
+                }
+
+                const monthSummaryNode = card.querySelector("[data-spend-widget-month-summary]");
+                if (monthSummaryNode instanceof HTMLElement) {
+                    const tone = typeof widget.progressTone === "string" ? widget.progressTone : "ok";
+                    monthSummaryNode.classList.remove("is-ok", "is-warning", "is-danger");
+                    monthSummaryNode.classList.add(tone === "warning" || tone === "danger" ? "is-" + tone : "is-ok");
+                }
+
+                const monthProgressTextNode = card.querySelector("[data-spend-widget-month-progress-text]");
+                if (monthProgressTextNode instanceof HTMLElement && Number.isFinite(Number(widget.progressPercent))) {
+                    monthProgressTextNode.textContent = Math.round(Number(widget.progressPercent)) + "%";
+                }
+
+                const monthProgressBarNode = card.querySelector("[data-spend-widget-month-progress-bar]");
+                if (monthProgressBarNode instanceof HTMLElement) {
                     if (Number.isFinite(Number(widget.progressBarPercent))) {
                         const width = Math.max(0, Math.min(100, Math.round(Number(widget.progressBarPercent))));
-                        progressBarNode.style.setProperty("--progress-target", width + "%");
-                        progressBarNode.style.width = width + "%";
+                        monthProgressBarNode.style.setProperty("--progress-target", width + "%");
+                        monthProgressBarNode.style.width = width + "%";
                     }
                     const tone = typeof widget.progressTone === "string" ? widget.progressTone : "ok";
-                    progressBarNode.classList.remove("is-ok", "is-warning", "is-danger");
-                    progressBarNode.classList.add(tone === "warning" || tone === "danger" ? "is-" + tone : "is-ok");
-                }
-
-                const todayNode = card.querySelector("[data-spend-widget-today]");
-                if (todayNode instanceof HTMLElement && typeof widget.todaySpentGel === "string") {
-                    todayNode.textContent = widget.todaySpentGel + " GEL";
-                }
-
-                const recentTbody = card.querySelector("[data-spend-widget-recent]");
-                if (recentTbody instanceof HTMLElement && Array.isArray(widget.recentSpends)) {
-                    recentTbody.innerHTML = "";
-                    if (widget.recentSpends.length === 0) {
-                        const row = document.createElement("tr");
-                        const cell = document.createElement("td");
-                        cell.colSpan = 4;
-                        cell.textContent = noSpendsYet;
-                        row.appendChild(cell);
-                        recentTbody.appendChild(row);
-                    } else {
-                        widget.recentSpends.slice(0, 3).forEach(function (item) {
-                            const row = document.createElement("tr");
-
-                            const amountCell = document.createElement("td");
-                            amountCell.textContent = ((item.amount || "") + " " + (item.currencyCode || "")).trim();
-                            row.appendChild(amountCell);
-
-                            const datetimeCell = document.createElement("td");
-                            datetimeCell.textContent = typeof item.datetime === "string" ? item.datetime : "";
-                            row.appendChild(datetimeCell);
-
-                            const userCell = document.createElement("td");
-                            userCell.textContent = typeof item.username === "string" ? item.username : "";
-                            row.appendChild(userCell);
-
-                            const descriptionCell = document.createElement("td");
-                            const rawDescription = typeof item.description === "string" ? item.description.trim() : "";
-                            descriptionCell.textContent = rawDescription || na;
-                            row.appendChild(descriptionCell);
-
-                            recentTbody.appendChild(row);
-                        });
-                    }
+                    monthProgressBarNode.classList.remove("is-ok", "is-warning", "is-danger");
+                    monthProgressBarNode.classList.add(tone === "warning" || tone === "danger" ? "is-" + tone : "is-ok");
                 }
 
                 card.classList.remove("is-live-updated");

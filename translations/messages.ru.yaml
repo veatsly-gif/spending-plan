@@ -197,13 +197,18 @@ telegram:
   mini_spend:
     title: "Telegram Mini App"
     kicker: "Telegram"
-    heading: "Добавить расход"
-    description: "Быстро добавьте расход через мини-приложение Telegram."
+    progress_of_plan: "Прогресс %plan%"
+    for_month: "За месяц"
+    show_progress_details: "Показать детали"
+    hide_progress_details: "Скрыть детали"
+    current_plan_progress: "Прогресс текущего плана"
+    month_progress: "Прогресс месяца (%month%)"
+    no_current_plan: "На сегодня нет активного плана"
     spent_today: "Потрачено сегодня"
     spent_month: "Потрачено в этом месяце"
     add_block: "Добавить расход"
     tab_add: "Добавить расход"
-    tab_spends: "Смотреть расходы"
+    tab_spends: "Смотреть траты"
 
 admin:
   dashboard:

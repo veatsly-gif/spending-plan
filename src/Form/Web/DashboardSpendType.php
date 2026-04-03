@@ -39,7 +39,11 @@ final class DashboardSpendType extends AbstractType
             ->add('spendingPlan', EntityType::class, [
                 'label' => 'form.spending_plan',
                 'class' => SpendingPlan::class,
-                'choice_label' => static function (SpendingPlan $spendingPlan): string {
+                'choice_label' => static function (SpendingPlan $spendingPlan) use ($options): string {
+                    if (true === $options['compact_spending_plan_labels']) {
+                        return $spendingPlan->getName();
+                    }
+
                     return sprintf(
                         '%s (%s - %s)',
                         $spendingPlan->getName(),
@@ -71,8 +75,10 @@ final class DashboardSpendType extends AbstractType
         $resolver->setDefaults([
             'data_class' => DashboardSpendDraftDto::class,
             'spending_plan_choices' => [],
+            'compact_spending_plan_labels' => false,
         ]);
 
         $resolver->setAllowedTypes('spending_plan_choices', 'array');
+        $resolver->setAllowedTypes('compact_spending_plan_labels', 'bool');
     }
 }

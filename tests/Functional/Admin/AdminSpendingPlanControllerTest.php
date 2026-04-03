@@ -11,6 +11,7 @@ use App\Tests\Fixtures\BaseUsersFixture;
 use App\Tests\Fixtures\CurrentMonthSpendingPlanFixture;
 use App\Tests\Functional\DatabaseWebTestCase;
 use App\Service\SpendingPlanSuggestionCacheService;
+use App\Util\RussianCalendarFormatter;
 
 final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
 {
@@ -52,7 +53,7 @@ final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
         $tabNodes = $crawler->filter('.sp-tab');
         self::assertGreaterThanOrEqual(2, $tabNodes->count());
 
-        $nextMonth = (new \DateTimeImmutable('first day of next month'))->format('F Y');
+        $nextMonth = RussianCalendarFormatter::monthYear(new \DateTimeImmutable('first day of next month'));
         self::assertGreaterThanOrEqual(1, $crawler->filter('.sp-tab:contains("'.$nextMonth.'")')->count());
     }
 

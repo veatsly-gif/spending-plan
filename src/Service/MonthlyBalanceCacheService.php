@@ -11,6 +11,7 @@ use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\Income\IncomeRateService;
+use App\Util\RussianCalendarFormatter;
 
 final class MonthlyBalanceCacheService
 {
@@ -118,7 +119,7 @@ final class MonthlyBalanceCacheService
 
         $snapshot = new MonthlyBalanceSnapshotDto(
             $resolvedMonthKey,
-            $monthStart->format('F Y'),
+            RussianCalendarFormatter::monthYear($monthStart),
             number_format($totalIncomeGel, 2, '.', ''),
             number_format($regularAndPlannedGel, 2, '.', ''),
             number_format($totalIncomeGel - $regularAndPlannedGel, 2, '.', ''),

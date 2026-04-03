@@ -15,6 +15,7 @@ use App\Entity\SpendingPlan;
 use App\Repository\CurrencyRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\SpendingPlanSuggestionCacheService;
+use App\Util\RussianCalendarFormatter;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class AdminSpendingPlanControllerService
@@ -67,7 +68,7 @@ final class AdminSpendingPlanControllerService
         return new AdminSpendingPlansIndexViewDto(
             $monthTabs,
             $activeMonthKey,
-            $activeMonthStart->format('F Y'),
+            RussianCalendarFormatter::monthYear($activeMonthStart),
             $currencyCodes,
             $suggestedPlans,
             $existingPlans,
@@ -266,7 +267,7 @@ final class AdminSpendingPlanControllerService
             $monthStart = $this->monthStart($monthKey);
             $tabs[] = new AdminSpendingPlanMonthTabDto(
                 $monthKey,
-                $monthStart->format('F Y'),
+                RussianCalendarFormatter::monthYear($monthStart),
                 $monthKey === $activeMonthKey,
                 $nextMonthNeedsAttention && $monthKey === $nextMonthStart->format('Y-m')
             );
