@@ -61,6 +61,32 @@ docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:
 
 6. **Firewall** (if using `ufw`): allow `22`, `80`, and `443`.
 
+### Automatic deploy on new tag (GitHub Actions)
+
+When you push a new tag like `v0.1.4`, GitHub Actions can deploy it to production automatically.
+
+1. **Create workflow**: this repository includes `.github/workflows/deploy-prod-on-tag.yaml`.
+2. **Configure GitHub secrets** (Repository -> Settings -> Secrets and variables -> Actions):
+   - `PROD_HOST` (example: `89.169.32.85`)
+   - `PROD_SSH_USER` (example: `root`)
+   - `PROD_APP_DIR` (example: `/opt/spending-plan`)
+   - `PROD_SSH_PRIVATE_KEY` (full private key content, including `-----BEGIN ...-----`)
+3. **Prepare server SSH access**:
+   - Create a deploy key pair on your machine (`ssh-keygen`).
+   - Add the public key to server `~/.ssh/authorized_keys` for `PROD_SSH_USER`.
+   - Put the private key into GitHub secret `PROD_SSH_PRIVATE_KEY`.
+4. **Prepare server runtime**:
+   - Repository already cloned at `PROD_APP_DIR` with working `origin`.
+   - Docker + Docker Compose plugin installed.
+   - Production `.env` exists in `PROD_APP_DIR` with real values.
+5. **Deploy**:
+   - Push a tag (`git tag -a v0.1.4 -m "Release v0.1.4" && git push origin v0.1.4`).
+   - Workflow checks out that tag on the server and runs:
+     - `docker compose -f docker-compose.prod.yaml --env-file .env up -d --build`
+     - `doctrine:migrations:migrate --no-interaction`
+
+You can also run the workflow manually with `workflow_dispatch` and pass a tag name.
+
 Open:
 
 - Web: http://localhost:8188/
