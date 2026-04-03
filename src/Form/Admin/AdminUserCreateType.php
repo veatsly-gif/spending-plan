@@ -12,8 +12,7 @@ use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Component\Validator\Constraints\Length;
-use Symfony\Component\Validator\Constraints\NotBlank;
+use App\Validation\UserPasswordRequirements;
 
 final class AdminUserCreateType extends AbstractType
 {
@@ -39,10 +38,7 @@ final class AdminUserCreateType extends AbstractType
                 'invalid_message' => 'form.passwords_must_match',
                 'first_options' => ['label' => 'form.password'],
                 'second_options' => ['label' => 'form.repeat_password'],
-                'constraints' => [
-                    new NotBlank(),
-                    new Length(min: 4),
-                ],
+                'constraints' => UserPasswordRequirements::constraints(),
             ]);
     }
 

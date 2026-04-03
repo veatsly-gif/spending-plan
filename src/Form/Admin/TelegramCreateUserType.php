@@ -8,6 +8,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use App\Validation\UserPasswordRequirements;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
@@ -22,7 +23,7 @@ final class TelegramCreateUserType extends AbstractType
             ])
             ->add('password', PasswordType::class, [
                 'label' => 'form.password',
-                'constraints' => [new NotBlank(), new Length(min: 4)],
+                'constraints' => UserPasswordRequirements::constraints(),
             ]);
     }
 }

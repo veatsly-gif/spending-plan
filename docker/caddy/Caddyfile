@@ -3,6 +3,12 @@
 # Do not commit real hostnames here; keep them in .env on the VPS.
 
 {$PUBLIC_HOST} {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 	encode gzip
 	reverse_proxy nginx:80
 }
