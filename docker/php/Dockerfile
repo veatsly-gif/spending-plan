@@ -1,5 +1,5 @@
 FROM php:8.4-fpm-alpine AS base
-RUN apk add --no-cache icu-dev libzip-dev postgresql-dev \
+RUN apk add --no-cache icu-dev libzip-dev postgresql-dev postgresql-client openssh-client \
     && apk add --no-cache $PHPIZE_DEPS linux-headers \
     && pecl install redis \
     && docker-php-ext-enable redis \

@@ -20,8 +20,7 @@ final class UserPasswordRequirements
     {
         return [
             new NotBlank(),
-            new Length(min: 12, max: 4096),
-            new PasswordStrength(minScore: PasswordStrength::STRENGTH_MEDIUM),
+            new Length(min: 8, max: 4096),
         ];
     }
 }
