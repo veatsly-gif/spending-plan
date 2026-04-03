@@ -1,5 +1,9 @@
 .git
 .idea
+.env
+.env.local
+.env.local.php
+.env.*.local
 var/cache
 var/log
 vendor

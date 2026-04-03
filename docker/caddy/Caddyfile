@@ -1,0 +1,11 @@
+# HTTP on all interfaces. After DuckDNS A/AAAA points to this host, you can switch to the
+# shepsility.duckdns.org { ... } block for automatic HTTPS (see README).
+:80 {
+	encode gzip
+	reverse_proxy nginx:80
+}
+
+# shepsility.duckdns.org {
+#	encode gzip
+#	reverse_proxy nginx:80
+# }

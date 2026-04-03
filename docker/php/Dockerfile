@@ -24,8 +24,13 @@ COPY composer.json composer.lock symfony.lock /var/www/app/
 RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts --optimize-autoloader
 COPY . /var/www/app
 RUN composer dump-autoload --classmap-authoritative --no-dev --no-interaction
-RUN mkdir -p var/cache var/log \
+RUN cp .env.example .env \
+    && mkdir -p var/cache var/log \
     && chown -R www-data:www-data var \
-    && php bin/console cache:clear --env=prod --no-debug
+    && APP_SECRET=build_only_not_used_at_runtime \
+    DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?serverVersion=16&charset=utf8" \
+    REDIS_DSN="redis://127.0.0.1:6379" \
+    php bin/console cache:clear --env=prod --no-debug \
+    && rm -f .env
 USER www-data
 CMD ["php-fpm"]

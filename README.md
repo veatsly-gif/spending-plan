@@ -38,20 +38,28 @@ cp docker-compose.yaml.example docker-compose.yaml
 ## Run (local)
 
 ```bash
-docker compose -f docker-compose.yaml up -d --build
-```
-
-Install dependencies:
-
-```bash
+cp docker-compose.yaml.example docker-compose.yaml
+docker compose --profile test -f docker-compose.yaml up -d --build
 docker compose -f docker-compose.yaml run --rm php composer install
-```
-
-Run migrations:
-
-```bash
 docker compose -f docker-compose.yaml run --rm php php bin/console doctrine:migrations:migrate --no-interaction
 ```
+
+The `test` profile starts `postgres_test` (needed for `make test`). Omit `--profile test` if you only need the main database.
+
+## Production (Docker on a VPS)
+
+1. **DNS**: Point `shepsility.duckdns.org` (or your hostname) A/AAAA records to the server’s public IP.
+2. **Tag deploy**: Prefer checking out a **git tag** on the server (for example `v0.1.0`) so production matches a known revision.
+3. **Config**: Copy `.env.example` to `.env` and set strong `APP_SECRET`, PostgreSQL credentials, `DATABASE_URL` (host name `postgres` inside Compose), `REDIS_DSN` (`redis://redis:6379`), `DEFAULT_URI` (public URL, e.g. `http://YOUR_IP` or `https://shepsility.duckdns.org`), `SYMFONY_TRUSTED_PROXIES` as in `.env.example`, and optional Telegram/DeepL keys.
+4. **Run**:
+
+```bash
+docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
+docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+5. **Caddy / HTTPS**: The default `docker/caddy/Caddyfile` serves HTTP on port 80 so you can validate with the server IP before DNS works. After DuckDNS points to this host, edit the Caddyfile to use the `shepsility.duckdns.org { ... }` site block (see comments in that file) and reload Caddy; set `DEFAULT_URI` to `https://shepsility.duckdns.org`.
+6. **Firewall** (if using `ufw`): allow `22`, `80`, and `443`.
 
 Open:
 
@@ -94,6 +102,20 @@ Current rule file example:
 
 ```yaml
 notifications:
+  - code: declaration_send_daily
+    type: time_based
+    date:
+      day_of_month_lte: 10
+    triggers:
+      - declaration-send
+    delivery_types:
+      - pop-up
+      - telegram
+    template: declaration_send_tax_service
+    frequency:
+      mode: interval
+      interval_seconds: 86400
+
   - code: missing_next_month_spending_plans_daily
     type: time_based
     date:
@@ -131,17 +153,43 @@ notifications:
 
 ### How it works end-to-end
 
-1. Admin logs in.
+1. Trigger entry points:
+   - admin logs in;
+   - authorized Telegram user linked to admin sends `/start`.
 2. `NotificationTriggerRunner` loads YAML rules for current `APP_ENV`.
 3. For each rule:
    - validates `type` and `date` gate;
    - checks `frequency` via Redis execution store;
    - runs all business triggers from `triggers` list.
 4. If all conditions pass, runner emits `NotifyActionEvent` for each delivery type.
-5. `NotificationService` handles delivery:
-   - `pop-up`: stored in Redis queue and consumed once in Twig (`admin_popup()`).
+5. `NotificationService` forwards event data to `NotificationCenter`.
+6. `NotificationCenter` handles all notification orchestration in one place:
+   - resolves template renderer by `template` code,
+   - resolves delivery handler by `delivery_types` entry,
+   - dispatches rendered payload to the selected channel.
+7. Current channels:
+   - `pop-up` / `popup` / `banner`: stored in Redis queue and consumed once in Twig (`admin_popup()`).
    - `telegram`: sent to all authorized Telegram accounts linked to the admin.
-6. After successful dispatch, execution store increments counter and updates last run timestamp.
+8. After successful dispatch, execution store increments counter and updates last run timestamp.
+
+Declaration reminder (`declaration_send_tax_service`) includes action buttons in popup and Telegram:
+- `Already done`: disables the reminder for the current month.
+- `Remind me later`: postpones reminder until the next day.
+
+### Notification center extension points
+
+Add a new template:
+
+- implement `App\Service\Notification\NotificationTemplateRendererInterface`,
+- return channel payloads from `render()` via `NotificationEnvelope`,
+- register class under `src/Service/Notification/Template/`.
+
+Add a new delivery channel:
+
+- implement `App\Service\Notification\NotificationDeliveryHandlerInterface`,
+- handle delivery in `deliver()`,
+- register class under `src/Service/Notification/Delivery/`,
+- reference new channel code in `delivery_types` inside YAML rule.
 
 ### Redis keys used by trigger execution store
 

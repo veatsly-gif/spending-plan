@@ -1,5 +1,5 @@
 up:
-	docker compose -f docker-compose.yaml up -d --build
+	docker compose --profile test -f docker-compose.yaml up -d --build
 
 down:
 	docker compose -f docker-compose.yaml down
@@ -14,6 +14,7 @@ bash:
 	docker compose -f docker-compose.yaml exec php sh
 
 test:
+	docker compose --profile test -f docker-compose.yaml up -d postgres_test
 	docker compose -f docker-compose.yaml exec -T php php vendor/bin/phpunit -c phpunit.xml.dist
 
 mutation:
