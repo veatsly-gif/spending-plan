@@ -11,6 +11,9 @@ services:
       target: prod
     container_name: spending_plan_php
     working_dir: /var/www/app
+    volumes:
+      # Symfony runtime loads this path; env_file alone does not create the file in the image.
+      - ./.env:/var/www/app/.env:ro
     env_file:
       - .env
     environment:
