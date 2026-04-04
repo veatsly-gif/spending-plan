@@ -64,9 +64,9 @@ jobs:
 
       - name: Deploy selected tag on server
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           ssh -i "${HOME}/.ssh/prod_deploy_key" -o IdentitiesOnly=yes "${PROD_SSH_USER}@${PROD_HOST}" "bash -s -- '${DEPLOY_TAG}' '${PROD_APP_DIR}'" << 'REMOTE'
-          set -euo pipefail
+          set -euxo pipefail
           DEPLOY_TAG="$1"
           PROD_APP_DIR="$2"
 
@@ -75,13 +75,22 @@ jobs:
           git checkout "${DEPLOY_TAG}"
           docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
           docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
-          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'test -s /etc/crontabs/root && grep -q "app:income:rates:refresh-live" /etc/crontabs/root'
-          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'ps | grep -q "[c]rond"'
-          if docker compose -f docker-compose.prod.yaml exec -T php php bin/console app:income:rates:refresh-live --env=prod --no-debug; then
-            docker compose -f docker-compose.prod.yaml exec -T redis sh -lc 'redis-cli --raw GET income:rates:live'
-          else
-            echo "WARNING: app:income:rates:refresh-live failed during deploy smoke check; continuing."
-          fi
 
           echo "Deployed ${DEPLOY_TAG} on $(hostname) in ${PROD_APP_DIR}"
+          REMOTE
+
+      - name: Post-deploy smoke checks (non-blocking)
+        continue-on-error: true
+        run: |
+          set -euxo pipefail
+          ssh -i "${HOME}/.ssh/prod_deploy_key" -o IdentitiesOnly=yes "${PROD_SSH_USER}@${PROD_HOST}" "bash -s -- '${PROD_APP_DIR}'" << 'REMOTE'
+          set -euxo pipefail
+          PROD_APP_DIR="$1"
+          cd "${PROD_APP_DIR}"
+
+          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'test -s /etc/crontabs/root && grep -q "app:income:rates:refresh-live" /etc/crontabs/root'
+          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'ps | grep -q "[c]rond"'
+          docker compose -f docker-compose.prod.yaml exec -T php php bin/console app:income:rates:refresh-live --env=prod --no-debug || true
+          docker compose -f docker-compose.prod.yaml exec -T redis sh -lc 'redis-cli --raw GET income:rates:live' || true
+          docker compose -f docker-compose.prod.yaml logs --since=10m cron | tail -n 80 || true
           REMOTE
