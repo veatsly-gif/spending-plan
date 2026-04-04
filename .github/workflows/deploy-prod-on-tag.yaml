@@ -70,6 +70,10 @@ jobs:
           git checkout "${DEPLOY_TAG}"
           docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
           docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'test -s /etc/crontabs/root && grep -q "app:income:rates:refresh-live" /etc/crontabs/root'
+          docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'ps | grep -q "[c]rond"'
+          docker compose -f docker-compose.prod.yaml exec -T php php bin/console app:income:rates:refresh-live --env=prod --no-debug
+          docker compose -f docker-compose.prod.yaml exec -T redis sh -lc 'redis-cli --raw GET income:rates:live | grep -q "\"updatedAt\""'
 
           echo "Deployed ${DEPLOY_TAG} on $(hostname) in ${PROD_APP_DIR}"
           REMOTE

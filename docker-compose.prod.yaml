@@ -27,6 +27,30 @@ services:
       redis:
         condition: service_started
 
+  cron:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: prod
+    container_name: spending_plan_cron
+    user: "0:0"
+    working_dir: /var/www/app
+    volumes:
+      - ./.env:/var/www/app/.env:ro
+    env_file:
+      - .env
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      XDEBUG_MODE: "off"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["crond", "-f", "-l", "8", "-L", "/dev/stdout"]
+
   nginx:
     image: nginx:1.27-alpine
     container_name: spending_plan_nginx

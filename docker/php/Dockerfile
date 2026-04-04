@@ -23,6 +23,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock symfony.lock /var/www/app/
 RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts --optimize-autoloader
 COPY . /var/www/app
+COPY docker/cron/run-console-command.sh /usr/local/bin/run-console-command.sh
+COPY docker/cron/root.crontab /etc/crontabs/root
+RUN chmod +x /usr/local/bin/run-console-command.sh
 RUN composer dump-autoload --classmap-authoritative --no-dev --no-interaction
 RUN cp .env.example .env \
     && mkdir -p var/cache var/log \

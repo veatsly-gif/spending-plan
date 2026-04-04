@@ -6,5 +6,7 @@
 .env.*.local
 var/cache
 var/log
+var/ssh
+var/ssh-key
 vendor
 node_modules

@@ -57,9 +57,11 @@ The `test` profile starts `postgres_test` (needed for `make test`). Omit `--prof
 ```bash
 docker compose -f docker-compose.prod.yaml --env-file .env up -d --build
 docker compose -f docker-compose.prod.yaml exec -T php php bin/console doctrine:migrations:migrate --no-interaction
+docker compose -f docker-compose.prod.yaml logs --since=10m cron
 ```
 
 6. **Firewall** (if using `ufw`): allow `22`, `80`, and `443`.
+7. **Cron in production**: `docker-compose.prod.yaml` includes a dedicated `cron` service that runs Symfony commands from `docker/cron/root.crontab`, so no host-level crontab setup is required.
 
 ### Automatic deploy on new tag (GitHub Actions)
 
@@ -84,6 +86,7 @@ When you push a new tag like `v0.1.4`, GitHub Actions can deploy it to productio
    - Workflow checks out that tag on the server and runs:
      - `docker compose -f docker-compose.prod.yaml --env-file .env up -d --build`
      - `doctrine:migrations:migrate --no-interaction`
+     - cron/rates smoke checks (`crond` process, live-rate refresh command, Redis `income:rates:live` payload)
 
 You can also run the workflow manually with `workflow_dispatch` and pass a tag name.
 
@@ -266,11 +269,21 @@ Fill missing `income.amount_in_gel` from current live rates:
 docker compose -f docker-compose.yaml exec -T php php bin/console app:income:fill-live-gel
 ```
 
-Example crontab on host:
+Production schedule (versioned, runs inside `cron` container):
 
 ```bash
-0 */3 * * * cd /Users/sergeysheps/Projects/spending-plan && docker compose -f docker-compose.yaml exec -T php php bin/console app:income:rates:refresh-live
-30 2 * * * cd /Users/sergeysheps/Projects/spending-plan && docker compose -f docker-compose.yaml exec -T php php bin/console app:income:backfill-gel
+*/30 * * * * app:income:rates:refresh-live
+2,32 * * * * app:income:fill-live-gel
+17 * * * * app:income:backfill-gel
+```
+
+Manual production verification:
+
+```bash
+docker compose -f docker-compose.prod.yaml exec -T cron sh -lc 'ps | grep -q "[c]rond" && echo "crond is running"'
+docker compose -f docker-compose.prod.yaml exec -T php php bin/console app:income:rates:refresh-live --env=prod --no-debug
+docker compose -f docker-compose.prod.yaml exec -T redis sh -lc 'redis-cli --raw GET income:rates:live'
+docker compose -f docker-compose.prod.yaml logs --since=30m cron
 ```
 
 ## Xdebug + PhpStorm
