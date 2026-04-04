@@ -40,4 +40,12 @@ final class SecurityAccessTest extends DatabaseWebTestCase
         self::assertSelectorTextContains('h1', 'Control Center');
         self::assertGreaterThan(0, $crawler->filter('a[href="/admin/telegram"]')->count());
     }
+
+    public function testRegularUserCannotOpenAdminTechTasksPage(): void
+    {
+        $this->loginAs('test');
+        $this->client->request('GET', '/admin/tech-tasks');
+
+        self::assertResponseStatusCodeSame(403);
+    }
 }

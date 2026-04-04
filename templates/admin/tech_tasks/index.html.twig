@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block title %}{{ 'admin.tech_tasks.title'|trans }}{% endblock %}
+
+{% block body %}
+    <main class="panel reveal">
+        <span class="kicker">{{ 'admin.tech_tasks.kicker'|trans }}</span>
+        <h1>{{ 'admin.tech_tasks.heading'|trans }}</h1>
+        <p>{{ 'admin.tech_tasks.description'|trans }}</p>
+
+        <section class="tech-create reveal delay">
+            {{ form_start(createForm) }}
+                <div class="tech-create-grid">
+                    {{ form_row(createForm.title) }}
+                    {{ form_row(createForm.description) }}
+                </div>
+                <div class="actions">
+                    <button type="submit">{{ 'common.create'|trans }}</button>
+                </div>
+            {{ form_end(createForm) }}
+        </section>
+
+        <section class="tech-board" data-tech-board>
+            {% for status in statuses %}
+                {% set tasks = tasksByStatus[status] ?? [] %}
+                <article class="tech-column" data-tech-status="{{ status }}">
+                    <header class="tech-column-head">
+                        <h2>{{ ('admin.tech_tasks.status.' ~ status)|trans }}</h2>
+                        <span class="badge tech-count" data-tech-count>{{ tasks|length }}</span>
+                    </header>
+                    <div class="tech-column-list" data-tech-column-list>
+                        {% for task in tasks %}
+                            <article class="tech-card" draggable="true" data-tech-task-id="{{ task.id }}">
+                                <h3>{{ task.title }}</h3>
+                                {% if task.description %}
+                                    <p class="tech-card-description">{{ task.description }}</p>
+                                {% endif %}
+                                <p class="tech-card-meta">
+                                    {{ 'admin.tech_tasks.updated_at'|trans }} {{ task.updatedAt|date('Y-m-d H:i') }}
+                                </p>
+                                <div class="actions">
+                                    <a class="btn btn-ghost" href="{{ path('admin_tech_tasks_edit', {id: task.id}) }}">{{ 'common.edit'|trans }}</a>
+                                    <form method="post" action="{{ path('admin_tech_tasks_delete', {id: task.id}) }}" onsubmit="return confirm('{{ 'admin.tech_tasks.confirm_delete'|trans({'%title%': task.title})|e('js') }}');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_tech_task_' ~ task.id) }}">
+                                        <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
+                                    </form>
+                                </div>
+                            </article>
+                        {% endfor %}
+                        <div class="tech-empty" data-tech-empty {{ tasks|length > 0 ? 'hidden' : '' }}>
+                            {{ 'admin.tech_tasks.empty_column'|trans }}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    </main>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        window.adminTechTasksBoard = {
+            moveUrlTemplate: {{ path('admin_tech_tasks_move', {id: 'TASK_ID'})|json_encode|raw }},
+            csrfToken: {{ csrf_token('move_tech_task')|json_encode|raw }},
+            i18n: {
+                unableMove: {{ 'admin.tech_tasks.unable_move'|trans|json_encode|raw }},
+                networkError: {{ 'admin.tech_tasks.network_error'|trans|json_encode|raw }}
+            }
+        };
+    </script>
+    <script src="{{ asset('js/admin-tech-tasks.js') }}"></script>
+{% endblock %}
