@@ -60,11 +60,18 @@
                 const targetUrl = new URL(url, window.location.href);
                 const isSameOrigin = targetUrl.origin === window.location.origin;
 
+                // For same-origin URLs (both Telegram and regular browser)
                 if (isSameOrigin) {
-                    window.location.href = targetUrl.href;
+                    // Wait for the slider animation to play (350ms total, wait 250ms for smooth feel)
+                    setTimeout(() => {
+                        // Use replace() instead of href to avoid adding to browser history
+                        // This makes the back button work correctly in Telegram WebView
+                        window.location.replace(targetUrl.href);
+                    }, 250);
                     return;
                 }
 
+                // For external URLs in Telegram WebView
                 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
                     window.Telegram.WebApp.openLink(targetUrl.href);
                     return;

@@ -29,7 +29,11 @@ final class LocaleController extends AbstractController
         $response = null;
         $redirect = $request->query->get('redirect');
         if (is_string($redirect) && '' !== $redirect && str_starts_with($redirect, '/')) {
-            $response = $this->redirect($redirect);
+            // Add _locale as a query parameter to ensure it's applied on the redirected page
+            // This is crucial for Telegram WebView where cookies might not persist reliably
+            $separator = str_contains($redirect, '?') ? '&' : '?';
+            $redirectWithLocale = $redirect . $separator . '_locale=' . urlencode($locale);
+            $response = $this->redirect($redirectWithLocale);
         }
 
         if (!$response instanceof RedirectResponse) {
@@ -39,7 +43,10 @@ final class LocaleController extends AbstractController
                 if (str_starts_with($referer, $host)) {
                     $path = mb_substr($referer, mb_strlen($host));
                     if (str_starts_with($path, '/')) {
-                        $response = $this->redirect($path);
+                        // Add _locale as a query parameter to ensure it's applied
+                        $separator = str_contains($path, '?') ? '&' : '?';
+                        $pathWithLocale = $path . $separator . '_locale=' . urlencode($locale);
+                        $response = $this->redirect($pathWithLocale);
                     }
                 }
             }
@@ -56,7 +63,9 @@ final class LocaleController extends AbstractController
                 ->withPath('/')
                 ->withSecure($request->isSecure())
                 ->withHttpOnly(false)
-                ->withSameSite('lax')
+                // Use SameSite=None for better compatibility with Telegram WebView
+                // Cookies with SameSite=None must also be Secure
+                ->withSameSite($request->isSecure() ? 'None' : 'Lax')
         );
 
         return $response;

@@ -61,17 +61,12 @@
      * @param {'light'|'dark'} theme
      */
     function applyTheme(theme) {
-        console.log(`[ThemeToggle] Applying theme: ${theme}`);
-        console.log(`[ThemeToggle] HTML element before:`, html.getAttribute('data-theme'));
 
         // Enable transition animation
         html.setAttribute('data-theme-transition', 'true');
 
         // Apply theme
         html.setAttribute('data-theme', theme);
-
-        console.log(`[ThemeToggle] HTML element after:`, html.getAttribute('data-theme'));
-        console.log(`[ThemeToggle] data-theme-transition:`, html.getAttribute('data-theme-transition'));
 
         // Update all toggle UI elements
         updateToggleUI(theme);
@@ -145,21 +140,18 @@
                 slider.classList.toggle('is-dark', isDark);
                 lightOption.classList.toggle('is-active', !isDark);
                 darkOption.classList.toggle('is-active', isDark);
-                console.log(`[ThemeToggle] Slider updated to: ${currentTheme}`);
             };
 
             updateSliderPosition();
 
             // Create handlers that work in all environments
             const handleLightClick = () => {
-                console.log('[ThemeToggle] ☀️ Light theme clicked');
                 setTheme('light');
                 applyTheme('light');
                 updateSliderPosition();
             };
 
             const handleDarkClick = () => {
-                console.log('[ThemeToggle] 🌙 Dark theme clicked');
                 setTheme('dark');
                 applyTheme('dark');
                 updateSliderPosition();
@@ -167,14 +159,12 @@
 
             // Attach both click and touch handlers for maximum compatibility
             lightOption.addEventListener('click', (e) => {
-                console.log('[ThemeToggle] Light option - click event fired');
                 e.preventDefault();
                 e.stopPropagation();
                 handleLightClick();
             }, false);
 
             darkOption.addEventListener('click', (e) => {
-                console.log('[ThemeToggle] Dark option - click event fired');
                 e.preventDefault();
                 e.stopPropagation();
                 handleDarkClick();
@@ -199,9 +189,7 @@
      * Initialize theme on page load
      */
     function init() {
-        console.log('[ThemeToggle] === Initializing ===');
         const currentTheme = getTheme();
-        console.log(`[ThemeToggle] Current theme from storage: ${currentTheme}`);
         applyTheme(currentTheme);
         initToggles();
 
