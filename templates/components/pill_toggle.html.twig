@@ -1,0 +1,86 @@
+{#
+ # Apple-style Pill Toggle Component
+ #
+ # A reusable two-state radio toggle with sliding pill indicator.
+ # Mimics a physical toggle: recessed track, raised active label, smooth slide animation.
+ #
+ # Required variables:
+ #   - name (string):    Radio button group name (must be unique per toggle instance)
+ #   - options (array):  Array of exactly 2 options, each with:
+ #       - value (string):    Radio button value
+ #       - label (string):    Display text
+ #       - url (string):      Navigation URL on change
+ #       - checked (bool):    Whether this option is currently active
+ #
+ # Optional variables:
+ #   - wrapper_class (string):  Additional CSS class for wrapper (default: '')
+ #   - label_class (string):    Additional CSS class for labels (default: '')
+ #   - variant (string):        Size variant: 'default' or 'mini' (default: 'default')
+ #
+ # Example usage:
+ #   {{ include('components/pill_toggle.html.twig', {
+ #       name: 'langToggle',
+ #       options: [
+ #           { value: 'en', label: 'EN', url: path('app_set_locale', {locale: 'en'}), checked: app.request.locale starts with 'en' },
+ #           { value: 'ru', label: 'RU', url: path('app_set_locale', {locale: 'ru'}), checked: app.request.locale starts with 'ru' },
+ #       ],
+ #   }) }}
+ #}
+{% set variant = variant|default('default') %}
+{% set wrapper_class = wrapper_class|default('') %}
+{% set label_class = label_class|default('') %}
+{% set unique_id = 'pill_toggle_' ~ random() %}
+
+{% if variant == 'mini' %}
+    <div class="pill-toggle-wrapper pill-toggle-wrapper--mini {{ wrapper_class }}" data-pill-toggle>
+        <div class="pill-toggle-slider"></div>
+        {% for option in options %}
+            <input
+                type="radio"
+                class="pill-toggle"
+                id="{{ unique_id }}_{{ loop.index }}"
+                name="{{ name }}"
+                value="{{ option.value }}"
+                {{ option.checked ? 'checked' : '' }}
+                data-pill-toggle-url="{{ option.url }}"
+            >
+            <label
+                for="{{ unique_id }}_{{ loop.index }}"
+                class="pill-toggle-label {{ option.checked ? 'is-active' : '' }} {{ label_class }}"
+                data-pill-toggle-label
+            >
+                {% if option.url is defined and option.url is not empty %}
+                    <a href="{{ option.url }}" class="pill-toggle-link">{{ option.label }}</a>
+                {% else %}
+                    {{ option.label }}
+                {% endif %}
+            </label>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="pill-toggle-wrapper {{ wrapper_class }}" data-pill-toggle>
+        <div class="pill-toggle-slider"></div>
+        {% for option in options %}
+            <input
+                type="radio"
+                class="pill-toggle"
+                id="{{ unique_id }}_{{ loop.index }}"
+                name="{{ name }}"
+                value="{{ option.value }}"
+                {{ option.checked ? 'checked' : '' }}
+                data-pill-toggle-url="{{ option.url }}"
+            >
+            <label
+                for="{{ unique_id }}_{{ loop.index }}"
+                class="pill-toggle-label {{ option.checked ? 'is-active' : '' }} {{ label_class }}"
+                data-pill-toggle-label
+            >
+                {% if option.url is defined and option.url is not empty %}
+                    <a href="{{ option.url }}" class="pill-toggle-link">{{ option.label }}</a>
+                {% else %}
+                    {{ option.label }}
+                {% endif %}
+            </label>
+        {% endfor %}
+    </div>
+{% endif %}

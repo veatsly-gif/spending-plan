@@ -1,0 +1,132 @@
+{#
+ # Theme Toggle Component (Self-contained)
+ #
+ # Light/Dark theme switcher with icon-only pill toggle design.
+ # This component is self-contained and doesn't depend on external CSS.
+ #
+ # Optional variables:
+ #   - variant (string):    Size variant: 'default' or 'mini' (default: 'default')
+ #   - wrapper_class (string):  Additional CSS class for wrapper (default: '')
+ #
+ # Example usage:
+ #   {{ include('components/theme_toggle.html.twig') }}
+ #   {{ include('components/theme_toggle.html.twig', { variant: 'mini' }) }}
+ #}
+{% set variant = variant|default('default') %}
+{% set wrapper_class = wrapper_class|default('') %}
+{% set unique_id = 'theme_toggle_' ~ random() %}
+
+{% set current_theme = 'light' %}
+{% if app.request.cookies.has('_theme') %}
+    {% set current_theme = app.request.cookies.get('_theme') %}
+{% endif %}
+
+<style>
+    .theme-toggle-self-contained {
+        display: inline-flex;
+        align-items: center;
+        height: {{ variant == 'mini' ? '28px' : '32px' }};
+        width: 68px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #1a6b5c 0%, #1f8070 100%);
+        box-shadow:
+            inset 0 2px 4px rgba(0, 0, 0, 0.25),
+            inset 0 1px 2px rgba(0, 0, 0, 0.18),
+            0 1px 2px rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 2px;
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+        box-sizing: border-box;
+    }
+
+    .theme-toggle-track {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        position: relative;
+    }
+
+    .theme-toggle-slider-pill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #4ecdc4 0%, #36b5a8 40%, #2fa397 100%);
+        box-shadow:
+            0 2px 6px rgba(0, 0, 0, 0.2),
+            0 1px 3px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1;
+        pointer-events: none;
+        flex-shrink: 0;
+    }
+
+    .theme-toggle-slider-pill.is-dark {
+        transform: translateX(100%);
+    }
+
+    .theme-toggle-option {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+        color: rgba(255, 255, 255, 0.55);
+        transition: color 0.3s ease;
+        user-select: none;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        pointer-events: auto;
+    }
+
+    .theme-toggle-option.is-active {
+        color: #fff;
+        text-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.25),
+            0 0 8px rgba(255, 255, 255, 0.08);
+    }
+
+    .theme-toggle-option svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .theme-toggle-option:hover {
+        color: rgba(255, 255, 255, 0.75);
+    }
+</style>
+
+<div class="theme-toggle-self-contained {{ wrapper_class }}" data-theme-toggle>
+    <div class="theme-toggle-track">
+        <div class="theme-toggle-slider-pill {{ current_theme == 'dark' ? 'is-dark' : '' }}"></div>
+        <div class="theme-toggle-option {{ current_theme == 'light' ? 'is-active' : '' }}" data-theme-toggle-light role="button" tabindex="0" aria-label="Light theme" title="Light theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        </div>
+        <div class="theme-toggle-option {{ current_theme == 'dark' ? 'is-active' : '' }}" data-theme-toggle-dark role="button" tabindex="0" aria-label="Dark theme" title="Dark theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </div>
+    </div>
+</div>

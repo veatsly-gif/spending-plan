@@ -1,0 +1,364 @@
+/**
+ * Dark Theme Overrides
+ *
+ * Applies when [data-theme="dark"] is set on <html> element.
+ * Uses semantic color naming following OS dark mode conventions.
+ */
+
+/* ============================================
+   Dark Theme Variables
+   ============================================ */
+
+[data-theme="dark"] {
+  /* Background surfaces (elevation layers) */
+  --bg: #0f1213;
+  --surface: #1a1f21;
+  --surface-soft: #232a2d;
+  --surface-elevated: #242b2f;
+
+  /* Borders and dividers */
+  --line: #2d3639;
+  --line-strong: #3a4549;
+
+  /* Text colors */
+  --text: #e8edef;
+  --text-secondary: #a3b0b4;
+  --muted: #8a9a9e;
+
+  /* Interactive colors */
+  --accent: #2cb8a0;
+  --accent-strong: #3dd9be;
+  --accent-subtle: rgba(44, 184, 160, 0.12);
+  --accent-subtle-strong: rgba(44, 184, 160, 0.2);
+
+  /* State colors */
+  --warn: #d46b6b;
+  --success: #4ecdc4;
+
+  /* Shadows (more subtle on dark backgrounds) */
+  --shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Keep radius unchanged */
+  /* --radius: 16px; */
+}
+
+/* ============================================
+   Dark Theme Component Overrides
+   ============================================ */
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 8% 0%, #1a2a28 0%, transparent 36%),
+    radial-gradient(circle at 92% 24%, #2a2118 0%, transparent 28%),
+    var(--bg);
+}
+
+[data-theme="dark"] .site-nav {
+  background: rgba(15, 18, 19, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: #15191b;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+[data-theme="dark"] select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8a9a9e 50%),
+    linear-gradient(135deg, #8a9a9e 50%, transparent 50%);
+}
+
+[data-theme="dark"] .nav-links a:hover {
+  background: var(--surface-soft);
+}
+
+[data-theme="dark"] .btn-ghost {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+[data-theme="dark"] .btn-ghost:hover {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+}
+
+[data-theme="dark"] th {
+  color: var(--muted);
+  border-bottom-color: var(--line);
+}
+
+[data-theme="dark"] td {
+  border-bottom-color: var(--line);
+}
+
+[data-theme="dark"] .dash-progress-track {
+  background: #2a3437;
+}
+
+[data-theme="dark"] .dash-rate-pill {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+[data-theme="dark"] .dash-rate-pill strong {
+  color: var(--text);
+}
+
+[data-theme="dark"] .dash-today-row,
+[data-theme="dark"] .dash-income-row {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .sp-tab {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+[data-theme="dark"] .sp-tab.is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle-strong);
+}
+
+[data-theme="dark"] .sp-tab.is-alert {
+  border-color: #d08c1d;
+  background: rgba(208, 140, 29, 0.15);
+}
+
+[data-theme="dark"] .sp-card {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .badge {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+[data-theme="dark"] .sp-inline-field input {
+  background: #15191b;
+}
+
+[data-theme="dark"] .icon-btn {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] .sp-popup {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .sp-popup-close {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+[data-theme="dark"] .sp-toast {
+  background: #2a3437;
+}
+
+[data-theme="dark"] .tech-create {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .tech-column {
+  background: var(--surface-soft);
+}
+
+[data-theme="dark"] .tech-column-head {
+  border-bottom-color: var(--line);
+}
+
+[data-theme="dark"] .tech-card {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .tech-empty {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+[data-theme="dark"] .row-action-btn {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] .row-action-btn--edit:hover {
+  background: var(--accent-subtle);
+}
+
+[data-theme="dark"] .row-action-btn--delete:hover {
+  background: rgba(212, 107, 107, 0.12);
+}
+
+[data-theme="dark"] .spend-stream-group {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .spend-stream-summary-inner {
+  background: transparent;
+}
+
+[data-theme="dark"] .spend-stream-body {
+  border-top-color: var(--line);
+}
+
+[data-theme="dark"] .spend-stream-item {
+  border-bottom-color: var(--line);
+}
+
+[data-theme="dark"] .spend-stream-item-field.is-datetime,
+[data-theme="dark"] .spend-stream-item-field.is-author {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .spend-live-indicator {
+  background: #1a3a35;
+}
+
+[data-theme="dark"] .validation-popup-overlay {
+  background: rgba(5, 8, 9, 0.65);
+}
+
+[data-theme="dark"] .validation-popup-box {
+  background: #2a1818;
+  border-color: #d44d4d;
+}
+
+[data-theme="dark"] .validation-popup-message {
+  color: #f0a8a8;
+}
+
+[data-theme="dark"] .validation-popup-close {
+  background: rgba(240, 168, 168, 0.12);
+  color: #f0a8a8;
+}
+
+[data-theme="dark"] .spend-filters {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .spend-filter-grid input,
+[data-theme="dark"] .spend-filter-grid select {
+  background: #15191b;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] .pagination .is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle-strong);
+}
+
+[data-theme="dark"] .mini-progress-track {
+  background: #2a3437;
+}
+
+[data-theme="dark"] .mini-progress-details {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .mini-progress-toggle {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--accent-strong);
+}
+
+[data-theme="dark"] .mini-tab-btn {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] .mini-tab-btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle-strong);
+  color: var(--accent-strong);
+}
+
+[data-theme="dark"] .mini-view-toggle-btn {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+[data-theme="dark"] .mini-view-toggle-btn:hover {
+  background: var(--surface-soft);
+}
+
+[data-theme="dark"] .mini-view-toggle-btn.is-stream {
+  border-color: var(--accent);
+  background: var(--accent-subtle-strong);
+  color: var(--accent-strong);
+}
+
+[data-theme="dark"] .mini-stream-wrap {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .mini-pagination .btn.is-active {
+  border-color: var(--accent);
+  background: var(--accent-subtle-strong);
+}
+
+/* ============================================
+   Dark Theme Transition
+   ============================================ */
+
+[data-theme-transition="true"] *,
+[data-theme-transition="true"] *::before,
+[data-theme-transition="true"] *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* ============================================
+   Respects system preference if no explicit theme set
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1213;
+    --surface: #1a1f21;
+    --surface-soft: #232a2d;
+    --surface-elevated: #242b2f;
+    --line: #2d3639;
+    --line-strong: #3a4549;
+    --text: #e8edef;
+    --text-secondary: #a3b0b4;
+    --muted: #8a9a9e;
+    --accent: #2cb8a0;
+    --accent-strong: #3dd9be;
+    --accent-subtle: rgba(44, 184, 160, 0.12);
+    --accent-subtle-strong: rgba(44, 184, 160, 0.2);
+    --warn: #d46b6b;
+    --success: #4ecdc4;
+    --shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+}
