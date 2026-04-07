@@ -7,7 +7,8 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="{{ asset('styles/app.css') }}?v=20260407-2">
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}?v=20260407-3">
+        <link rel="stylesheet" href="{{ asset('styles/dark-theme.css') }}?v=20260407-2">
         {% if app.environment == 'prod' %}
             <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon.ico') }}?v=20260407-1">
         {% else %}
@@ -37,19 +38,17 @@
                     {% else %}
                         <a href="{{ path('app_login') }}">{{ 'nav.login'|trans }}</a>
                     {% endif %}
+                    <div class="theme-switch">
+                        {{ include('components/theme_toggle.html.twig') }}
+                    </div>
                     <div class="lang-switch">
-                        <a
-                            href="{{ path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}) }}"
-                            class="{{ app.request.locale starts with 'en' ? 'is-active' : '' }}"
-                        >
-                            EN
-                        </a>
-                        <a
-                            href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}"
-                            class="{{ app.request.locale starts with 'ru' ? 'is-active' : '' }}"
-                        >
-                            RU
-                        </a>
+                        {{ include('components/pill_toggle.html.twig', {
+                            name: 'langToggle',
+                            options: [
+                                { value: 'en', label: 'EN', url: path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}), checked: app.request.locale starts with 'en' },
+                                { value: 'ru', label: 'RU', url: path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}), checked: app.request.locale starts with 'ru' },
+                            ],
+                        }) }}
                     </div>
                 </nav>
             </div>
@@ -107,5 +106,7 @@
             </script>
         {% endif %}
         <script src="{{ asset('js/form-validation-popup.js') }}"></script>
+        <script src="{{ asset('js/pill-toggle.js') }}"></script>
+        <script src="{{ asset('js/theme-toggle.js') }}"></script>
     </body>
 </html>

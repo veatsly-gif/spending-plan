@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Web;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,22 +26,39 @@ final class LocaleController extends AbstractController
 
         $request->setLocale($locale);
 
+        $response = null;
         $redirect = $request->query->get('redirect');
         if (is_string($redirect) && '' !== $redirect && str_starts_with($redirect, '/')) {
-            return $this->redirect($redirect);
+            $response = $this->redirect($redirect);
         }
 
-        $referer = $request->headers->get('referer');
-        if (is_string($referer) && '' !== $referer) {
-            $host = (string) $request->getSchemeAndHttpHost();
-            if (str_starts_with($referer, $host)) {
-                $path = mb_substr($referer, mb_strlen($host));
-                if (str_starts_with($path, '/')) {
-                    return $this->redirect($path);
+        if (!$response instanceof RedirectResponse) {
+            $referer = $request->headers->get('referer');
+            if (is_string($referer) && '' !== $referer) {
+                $host = (string) $request->getSchemeAndHttpHost();
+                if (str_starts_with($referer, $host)) {
+                    $path = mb_substr($referer, mb_strlen($host));
+                    if (str_starts_with($path, '/')) {
+                        $response = $this->redirect($path);
+                    }
                 }
             }
         }
 
-        return $this->redirectToRoute('web_home');
+        if (!$response instanceof RedirectResponse) {
+            $response = $this->redirectToRoute('web_home');
+        }
+
+        $response->headers->setCookie(
+            Cookie::create('_locale')
+                ->withValue($locale)
+                ->withExpires(strtotime('+1 year'))
+                ->withPath('/')
+                ->withSecure($request->isSecure())
+                ->withHttpOnly(false)
+                ->withSameSite('lax')
+        );
+
+        return $response;
     }
 }

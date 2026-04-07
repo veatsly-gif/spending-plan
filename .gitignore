@@ -16,3 +16,5 @@
 /.phpunit.cache/
 ###< phpunit/phpunit ###
 /.aiassistant/rules/default.md
+/.aiassistant/
+/.continue/rules/new-rule.md

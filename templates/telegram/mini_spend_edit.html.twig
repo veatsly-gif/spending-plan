@@ -6,17 +6,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ 'spend.edit_title'|trans }}</title>
+    {% set cacheBuster = 'v=20260407-5' %}
     {% set cssAssetPath = asset('styles/app.css') ~ '?v=' ~ assetVersion %}
     {% set cssHref = assetBaseHost is not empty ? assetBaseHost ~ cssAssetPath : cssAssetPath %}
     <link rel="stylesheet" href="{{ cssHref }}">
+    <link rel="stylesheet" href="{{ asset('styles/dark-theme.css') }}?{{ cacheBuster }}">
 </head>
 <body>
 <section class="page">
     <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
         <span class="kicker">{{ 'telegram.mini_spend.kicker'|trans }}</span>
-        <div class="actions" style="justify-content: flex-end; margin-bottom: 8px;">
-            <a class="btn btn-ghost" href="{{ path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}) }}">EN</a>
-            <a class="btn btn-ghost" href="{{ path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}) }}">RU</a>
+        <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-bottom: 8px;">
+            {{ include('components/theme_toggle.html.twig', { variant: 'mini' }) }}
+            {{ include('components/pill_toggle.html.twig', {
+                name: 'langToggleEdit',
+                variant: 'mini',
+                options: [
+                    { value: 'en', label: 'EN', url: path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}), checked: app.request.locale starts with 'en' },
+                    { value: 'ru', label: 'RU', url: path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}), checked: app.request.locale starts with 'ru' },
+                ],
+            }) }}
         </div>
         <h1>{{ 'spend.edit_heading'|trans({'%id%': spend.id}) }}</h1>
         <div class="actions" style="margin-bottom: 8px;">
@@ -35,6 +44,8 @@
         {{ form_end(spendForm) }}
     </main>
 </section>
-<script src="{{ asset('js/form-validation-popup.js') }}"></script>
+<script src="{{ asset('js/form-validation-popup.js') }}?{{ cacheBuster }}"></script>
+<script src="{{ asset('js/pill-toggle.js') }}?{{ cacheBuster }}"></script>
+<script src="{{ asset('js/theme-toggle.js') }}?{{ cacheBuster }}"></script>
 </body>
 </html>

@@ -52,6 +52,16 @@ final class LocaleSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $cookieLocale = $request->cookies->get('_locale');
+        $cookieLocale = is_string($cookieLocale) ? $this->normalizeLocale($cookieLocale) : null;
+        if (null !== $cookieLocale) {
+            $request->setLocale($cookieLocale);
+            $request->attributes->set('_locale', $cookieLocale);
+            $session?->set('_locale', $cookieLocale);
+
+            return;
+        }
+
         foreach ($request->getLanguages() as $language) {
             $resolved = $this->normalizeLocale($language);
             if (null === $resolved) {

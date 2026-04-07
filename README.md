@@ -9,6 +9,65 @@ Personal finance system based on Symfony + PostgreSQL, running in Docker.
 - Nginx
 - PostgreSQL 16
 
+## Reusable UI Components
+
+### Theme System (Light/Dark)
+
+Full dark theme support with smooth transitions and system preference detection.
+
+**Features:**
+- Light and dark themes with smooth 0.3s transitions
+- Automatic system preference detection (`prefers-color-scheme`)
+- localStorage persistence with cross-tab synchronization
+- Apple-style toggle with sun/moon icons
+
+**Usage:**
+```twig
+{# Include theme toggle in header #}
+<div class="theme-switch">
+    {{ include('components/theme_toggle.html.twig') }}
+</div>
+
+{# Mini variant for compact spaces #}
+{{ include('components/theme_toggle.html.twig', { variant: 'mini' }) }}
+```
+
+**Styling new components:**
+```css
+/* Always use CSS variables for colors */
+.my-component {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+```
+
+**Documentation:** See `.aiassistant/theme-system.md` for complete architecture, color palettes, and dark theme implementation guide.
+
+### Pill Toggle (Apple-style Toggle Switch)
+
+A two-state radio toggle with sliding pill indicator that mimics a physical toggle switch.
+
+**Features:**
+- Recessed track with realistic inner shadows
+- Smooth sliding animation (GPU-accelerated)
+- Active label shifts up (raised button effect)
+- Auto-initializing JavaScript
+- Two size variants: default and mini
+
+**Usage:**
+```twig
+{{ include('components/pill_toggle.html.twig', {
+    name: 'myToggle',
+    options: [
+        { value: 'on', label: 'ON', url: path('turn_on'), checked: is_on },
+        { value: 'off', label: 'OFF', url: path('turn_off'), checked: not is_on },
+    ],
+}) }}
+```
+
+**Documentation:** See `.aiassistant/components/pill-toggle.md` for complete API, architecture, and examples.
+
 ## Environment files
 
 Use only these files:

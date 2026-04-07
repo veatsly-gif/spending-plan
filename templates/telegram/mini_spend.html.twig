@@ -9,9 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    {% set cssAssetPath = asset('styles/app.css') ~ '?v=' ~ assetVersion %}
+    {% set cacheBuster = 'v=20260407-5' %}
+    {% set cssAssetPath = asset('styles/app.css') ~ '?' ~ cacheBuster %}
     {% set cssHref = assetBaseHost is not empty ? assetBaseHost ~ cssAssetPath : cssAssetPath %}
-    <link rel="stylesheet" href="{{ cssHref }}">
+    <link rel="stylesheet" href="{{ asset('styles/app.css') }}?{{ cacheBuster }}">
+    <link rel="stylesheet" href="{{ asset('styles/dark-theme.css') }}?{{ cacheBuster }}">
     <style>
         :root {
             --bg: #f5f7f4;
@@ -22,6 +24,7 @@
             --accent: #177e6f;
             --accent-strong: #115f54;
             --radius: 16px;
+            --input-bg: #fbfdfb;
         }
         * { box-sizing: border-box; }
         body {
@@ -66,7 +69,7 @@
             padding: 10px 11px;
             border: 1px solid var(--line);
             border-radius: 10px;
-            background: #fbfdfb;
+            background: var(--input-bg);
             color: var(--text);
         }
         select {
@@ -150,7 +153,7 @@
         .mini-progress-details {
             border: 1px solid #e8eeea;
             border-radius: 10px;
-            background: #fcfefd;
+            background: var(--surface);
             padding: 7px 8px;
             margin-top: 6px;
         }
@@ -268,7 +271,7 @@
             border: 1px solid var(--line);
             border-radius: 12px;
             padding: 8px 10px;
-            background: #fff;
+            background: var(--surface);
         }
         .dash-recent-table table {
             width: 100%;
@@ -310,12 +313,6 @@
             align-items: center;
             gap: 6px;
         }
-        .mini-locale .btn {
-            border-color: var(--accent);
-            background: #d8ece7;
-            color: var(--accent-strong);
-            font-weight: 700;
-        }
         .mini-tab-row {
             margin-top: 14px;
             display: flex;
@@ -332,7 +329,7 @@
         .mini-tab-btn {
             appearance: none;
             border: 1px solid var(--line);
-            background: #fff;
+            background: var(--surface);
             color: var(--text);
             border-radius: 999px;
             padding: 7px 12px;
@@ -355,7 +352,7 @@
         }
         .mini-view-toggle-btn {
             border: 1px solid var(--line);
-            background: #fff;
+            background: var(--surface);
             color: var(--text);
             border-radius: 999px;
             padding: 6px 11px;
@@ -378,7 +375,7 @@
             border: 1px solid var(--line);
             border-radius: 12px;
             padding: 8px 10px;
-            background: #fff;
+            background: var(--surface);
         }
         .mini-stream-wrap .spend-stream {
             min-width: 720px;
@@ -410,7 +407,7 @@
             height: 34px;
             border-radius: 999px;
             border: 1px solid var(--line);
-            background: #fff;
+            background: var(--surface);
             color: var(--text);
             display: inline-flex;
             align-items: center;
@@ -469,6 +466,39 @@
         @media (max-width: 560px) {
             .mini-field-row { grid-template-columns: minmax(0, 1fr) 88px; }
         }
+        [data-theme="dark"] {
+            --bg: #0f1213;
+            --surface: #1a1f21;
+            --line: #2d3639;
+            --text: #e8edef;
+            --muted: #8a9a9e;
+            --accent: #2cb8a0;
+            --accent-strong: #3dd9be;
+            --input-bg: #15191b;
+        }
+        [data-theme="dark"] .mini-progress-row + .mini-progress-row {
+            border-top-color: #2d3639;
+        }
+        [data-theme="dark"] .mini-progress-details {
+            border-color: #2d3639;
+        }
+        [data-theme="dark"] .mini-progress-toggle {
+            border-color: #2d3639;
+            background: #232a2d;
+        }
+        [data-theme="dark"] .dash-recent-table th,
+        [data-theme="dark"] .dash-recent-table td {
+            border-bottom-color: #2d3639;
+        }
+        [data-theme="dark"] .mini-view-toggle-btn:hover {
+            background: #232a2d;
+        }
+        [data-theme="dark"] .row-action-btn--edit:hover {
+            background: rgba(44, 184, 160, 0.12);
+        }
+        [data-theme="dark"] .row-action-btn--delete:hover {
+            background: rgba(212, 107, 107, 0.12);
+        }
     </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%2292%22>₾</text></svg>">
 </head>
@@ -487,10 +517,16 @@
             {% set targetLocale = currentLocale starts with 'ru' ? 'en' : 'ru' %}
             <div class="mini-topbar">
                 <span class="mini-brand">telegram</span>
-                <div class="mini-locale">
-                    <a class="btn btn-ghost" href="{{ path('app_set_locale', {locale: targetLocale, redirect: app.request.requestUri}) }}">
-                        {{ targetLocale|upper }}
-                    </a>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    {{ include('components/theme_toggle.html.twig', { variant: 'mini' }) }}
+                    {{ include('components/pill_toggle.html.twig', {
+                        name: 'miniLangToggle',
+                        variant: 'mini',
+                        options: [
+                            { value: 'en', label: 'EN', url: path('app_set_locale', {locale: 'en', redirect: app.request.requestUri}), checked: app.request.locale starts with 'en' },
+                            { value: 'ru', label: 'RU', url: path('app_set_locale', {locale: 'ru', redirect: app.request.requestUri}), checked: app.request.locale starts with 'ru' },
+                        ],
+                    }) }}
                 </div>
             </div>
 
@@ -1096,5 +1132,7 @@
         })();
     </script>
     <script src="{{ asset('js/form-validation-popup.js') }}"></script>
+    <script src="{{ asset('js/pill-toggle.js') }}?{{ cacheBuster }}"></script>
+    <script src="{{ asset('js/theme-toggle.js') }}?{{ cacheBuster }}"></script>
 </body>
 </html>
