@@ -16,8 +16,35 @@
         {% endif %}
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}{% endblock %}
+        {% if app.user %}
+            <meta name="data-authenticated" content="true">
+            {% set user_prefs = user_preferences() %}
+            <script>
+                // Apply user preferences from database on page load
+                (function() {
+                    const userPreferences = {{ user_prefs|json_encode|raw }};
+
+                    // Apply theme from database
+                    if (userPreferences.theme) {
+                        try {
+                            localStorage.setItem('spending-plan-theme', userPreferences.theme);
+                        } catch (e) {}
+                        document.cookie = '_theme=' + userPreferences.theme + '; path=/; max-age=' + (365 * 24 * 60 * 60) + '; SameSite=Lax';
+                        document.documentElement.setAttribute('data-theme', userPreferences.theme);
+                    }
+
+                    // Apply language from database - redirect if different from current
+                    if (userPreferences.language && userPreferences.language !== '{{ app.request.locale }}') {
+                        // Add _locale query parameter to current URL
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('_locale', userPreferences.language);
+                        window.location.replace(url.toString());
+                    }
+                })();
+            </script>
+        {% endif %}
     </head>
-    <body>
+    <body {% if app.user %}data-authenticated{% endif %}>
         {% set globalPopup = is_granted('ROLE_ADMIN') ? admin_popup() : {show: false, title: '', message: '', monthKey: '', template: '', actions: []} %}
         <header class="site-nav">
             <div class="nav-shell">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Web;
 
+use App\Service\UserMetadataService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -12,6 +13,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class LocaleController extends AbstractController
 {
+    public function __construct(
+        private readonly UserMetadataService $userMetadataService,
+    ) {
+    }
+
     #[Route('/locale/{locale}', name: 'app_set_locale', methods: ['GET'])]
     public function __invoke(string $locale, Request $request): RedirectResponse
     {
@@ -25,6 +31,12 @@ final class LocaleController extends AbstractController
         }
 
         $request->setLocale($locale);
+
+        // Persist locale to user preferences if user is authenticated
+        $user = $this->getUser();
+        if (null !== $user) {
+            $this->userMetadataService->updatePreference($user, 'language', $locale);
+        }
 
         $response = null;
         $redirect = $request->query->get('redirect');

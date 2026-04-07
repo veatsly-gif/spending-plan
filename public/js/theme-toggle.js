@@ -120,6 +120,30 @@
         }
         // Set cookie so server-side Twig template can read the theme
         document.cookie = '_theme=' + theme + '; path=/; max-age=' + (365 * 24 * 60 * 60) + '; SameSite=Lax';
+
+        // Persist theme to backend for authenticated users
+        persistThemeToBackend(theme);
+    }
+
+    /**
+     * Persist theme to backend API
+     * @param {'light'|'dark'} theme
+     */
+    function persistThemeToBackend(theme) {
+        // Only persist if user is authenticated (check for CSRF token in meta tag or other indicator)
+        const isAuthenticated = document.querySelector('[data-authenticated]') !== null;
+        if (!isAuthenticated) {
+            return;
+        }
+
+        fetch('/theme/' + theme, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        }).catch(error => {
+            console.warn('Failed to persist theme to backend:', error);
+        });
     }
 
     /**

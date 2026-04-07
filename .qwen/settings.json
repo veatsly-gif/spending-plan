@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sed *)"
+      "Bash(sed *)",
+      "Bash(php *)",
+      "Bash(make *)",
+      "Bash(docker compose *)",
+      "Bash(curl *)"
     ]
   },
   "$version": 3
