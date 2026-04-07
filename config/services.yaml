@@ -10,6 +10,8 @@ parameters:
     redis_dsn_default: 'redis://redis:6379'
     deepl_api_base_url_default: 'https://api-free.deepl.com'
     deepl_usage_stop_percent_default: '95'
+    app_display_timezone_default: 'UTC'
+    app.display_timezone: '%env(default:app_display_timezone_default:APP_DISPLAY_TIMEZONE)%'
 
 services:
     # default configuration for services in *this* file
@@ -54,6 +56,10 @@ services:
     App\Service\NotificationTriggerRunner:
         arguments:
             $triggers: !tagged_iterator app.notification_trigger
+
+    App\Util\AppDateTimeFormatter:
+        arguments:
+            $timezoneName: '%app.display_timezone%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

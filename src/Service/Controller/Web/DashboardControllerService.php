@@ -27,6 +27,7 @@ use App\Repository\SpendRepository;
 use App\Repository\SpendingPlanRepository;
 use App\Service\Income\IncomeRateService;
 use App\Service\MonthlyBalanceCacheService;
+use App\Util\AppDateTimeFormatter;
 use App\Util\RussianCalendarFormatter;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -56,6 +57,7 @@ final class DashboardControllerService
         private readonly SpendingPlanRepository $spendingPlanRepository,
         private readonly IncomeRateService $incomeRateService,
         private readonly MonthlyBalanceCacheService $monthlyBalanceCacheService,
+        private readonly AppDateTimeFormatter $dateTimeFormatter,
         private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
@@ -84,7 +86,9 @@ final class DashboardControllerService
                 $balanceSnapshot->availableToSpendGel,
                 $ratesSnapshot?->eurGel,
                 $ratesSnapshot?->usdtGel,
-                null !== $ratesSnapshot ? $ratesSnapshot->updatedAt->format('Y-m-d H:i') : null,
+                null !== $ratesSnapshot
+                    ? $this->dateTimeFormatter->format($ratesSnapshot->updatedAt, 'Y-m-d H:i')
+                    : null,
             ),
             new DashboardSpendWidgetDto(
                 RussianCalendarFormatter::monthYear($monthStart),
@@ -653,7 +657,7 @@ final class DashboardControllerService
             $income->getOfficialRatedAmountInGel(),
             $income->getRate(),
             $income->getComment(),
-            $income->getCreatedAt()->format('Y-m-d H:i')
+            $this->dateTimeFormatter->format($income->getCreatedAt(), 'Y-m-d H:i')
         );
     }
 
@@ -667,7 +671,7 @@ final class DashboardControllerService
             (string) $spend->getSpendingPlan()?->getName(),
             $spend->getSpendDate()->format('Y-m-d'),
             $spend->getComment(),
-            $spend->getCreatedAt()->format('Y-m-d H:i')
+            $this->dateTimeFormatter->format($spend->getCreatedAt(), 'Y-m-d H:i')
         );
     }
 
