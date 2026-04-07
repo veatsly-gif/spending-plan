@@ -8,7 +8,11 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}?v=20260407-2">
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%2292%22>₾</text></svg>">
+        {% if app.environment == 'prod' %}
+            <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon.ico') }}?v=20260407-1">
+        {% else %}
+            <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%2292%22>₾</text></svg>">
+        {% endif %}
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}{% endblock %}
     </head>
