@@ -41,6 +41,8 @@ final class DashboardControllerService
     private const SORT_AMOUNT_IN_GEL = 'amountInGel';
     private const SORT_OFFICIAL_RATED_AMOUNT_IN_GEL = 'officialRatedAmountInGel';
     private const SORT_RATE = 'rate';
+    private const VIEW_TABLE = 'table';
+    private const VIEW_STREAM = 'stream';
 
     /**
      * @var list<int>
@@ -228,6 +230,7 @@ final class DashboardControllerService
         $monthKey = $this->sanitizeMonthKey(isset($query['month']) ? (string) $query['month'] : null)
             ?? $now->format('Y-m');
         $monthStart = $this->monthStart($monthKey);
+        $viewMode = $this->sanitizeSpendViewMode(isset($query['view']) ? (string) $query['view'] : null);
 
         $spends = $this->spendRepository->findForMonth($monthStart);
         $monthEnd = $monthStart->modify('last day of this month')->setTime(0, 0);
@@ -288,7 +291,20 @@ final class DashboardControllerService
                 return $comparison;
             }
 
-            return ((int) $left->getId()) <=> ((int) $right->getId());
+            $createdAtComparison = $left->getCreatedAt() <=> $right->getCreatedAt();
+            if ('desc' === $dir) {
+                $createdAtComparison *= -1;
+            }
+            if (0 !== $createdAtComparison) {
+                return $createdAtComparison;
+            }
+
+            $idComparison = ((int) $left->getId()) <=> ((int) $right->getId());
+            if ('desc' === $dir) {
+                $idComparison *= -1;
+            }
+
+            return $idComparison;
         });
 
         $totalsByCurrency = [];
@@ -317,6 +333,10 @@ final class DashboardControllerService
             $items[] = $this->mapSpend($spend);
         }
 
+        $referenceDate = $monthKey === $now->format('Y-m') ? $now->setTime(0, 0) : $monthStart;
+        $currentPlanId = (int) ($this->spendingPlanRepository->findBestForDate($referenceDate)?->getId() ?? 0);
+        $streamGroups = $this->buildSpendStreamGroups($monthPlans, $filtered, $currentPlanId);
+
         $monthTabs = $this->buildSpendMonthTabs($monthStart, $monthKey, $now);
 
         return new DashboardSpendListPageDto(
@@ -324,8 +344,10 @@ final class DashboardControllerService
             $monthKey,
             $monthStart->modify('first day of previous month')->format('Y-m'),
             $monthStart->modify('first day of next month')->format('Y-m'),
+            $viewMode,
             $monthTabs,
             $items,
+            $streamGroups,
             $totalRecords,
             $this->formatCurrencyTotals($totalsByCurrency),
             $sort,
@@ -410,7 +432,7 @@ final class DashboardControllerService
      */
     public function getSpendPlanChoicesForDate(\DateTimeImmutable $date): array
     {
-        return $this->spendingPlanRepository->findForSpendSelection($date);
+        return $this->spendingPlanRepository->findAllForSpendSelection($date);
     }
 
     public function createIncome(User $user, DashboardIncomeDraftDto $draft): IncomeCreateResultDto
@@ -1059,6 +1081,15 @@ final class DashboardControllerService
         return $sort;
     }
 
+    private function sanitizeSpendViewMode(?string $viewMode): string
+    {
+        if (self::VIEW_TABLE === $viewMode) {
+            return self::VIEW_TABLE;
+        }
+
+        return self::VIEW_STREAM;
+    }
+
     private function sanitizeDirection(?string $direction): string
     {
         if ('asc' === $direction) {
@@ -1136,5 +1167,102 @@ final class DashboardControllerService
         }
 
         return (float) $left <=> (float) $right;
+    }
+
+    /**
+     * @param list<SpendingPlan> $monthPlans
+     * @param list<Spend> $filteredSpends
+     *
+     * @return list<array{
+     *     id: int,
+     *     name: string,
+     *     totalAmountLabel: string,
+     *     plannedAmountLabel: string,
+     *     current: bool,
+     *     expanded: bool,
+     *     spends: list<DashboardSpendItemDto>
+     * }>
+     */
+    private function buildSpendStreamGroups(array $monthPlans, array $filteredSpends, int $currentPlanId): array
+    {
+        $groups = [];
+        foreach ($monthPlans as $plan) {
+            $planId = (int) $plan->getId();
+            if ($planId <= 0) {
+                continue;
+            }
+
+            $groups[$planId] = [
+                'id' => $planId,
+                'name' => $plan->getName(),
+                'totalsByCurrency' => [],
+                'plannedAmountLabel' => sprintf('%s %s', $plan->getLimitAmount(), (string) $plan->getCurrency()?->getCode()),
+                'current' => $planId === $currentPlanId,
+                'expanded' => $planId === $currentPlanId,
+                'spends' => [],
+            ];
+        }
+
+        foreach ($filteredSpends as $spend) {
+            $planId = (int) ($spend->getSpendingPlan()?->getId() ?? 0);
+            if ($planId <= 0) {
+                $planId = -1;
+            }
+
+            if (!isset($groups[$planId])) {
+                $groups[$planId] = [
+                    'id' => $planId,
+                    'name' => $planId < 0 ? 'Unassigned plan' : (string) $spend->getSpendingPlan()?->getName(),
+                    'totalsByCurrency' => [],
+                    'plannedAmountLabel' => '-',
+                    'current' => false,
+                    'expanded' => false,
+                    'spends' => [],
+                ];
+            }
+
+            $currencyCode = (string) $spend->getCurrency()?->getCode();
+            if ('' !== $currencyCode) {
+                if (!isset($groups[$planId]['totalsByCurrency'][$currencyCode])) {
+                    $groups[$planId]['totalsByCurrency'][$currencyCode] = 0.0;
+                }
+
+                $groups[$planId]['totalsByCurrency'][$currencyCode] += (float) $spend->getAmount();
+            }
+
+            $groups[$planId]['spends'][] = $this->mapSpend($spend);
+        }
+
+        if ([] !== $groups) {
+            $hasExpanded = false;
+            foreach ($groups as $group) {
+                if ($group['expanded']) {
+                    $hasExpanded = true;
+                    break;
+                }
+            }
+
+            if (!$hasExpanded) {
+                $first = array_key_first($groups);
+                if (null !== $first) {
+                    $groups[$first]['expanded'] = true;
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($groups as $group) {
+            $result[] = [
+                'id' => (int) $group['id'],
+                'name' => (string) $group['name'],
+                'totalAmountLabel' => $this->formatCurrencyTotals($group['totalsByCurrency']),
+                'plannedAmountLabel' => (string) $group['plannedAmountLabel'],
+                'current' => (bool) $group['current'],
+                'expanded' => (bool) $group['expanded'],
+                'spends' => $group['spends'],
+            ];
+        }
+
+        return $result;
     }
 }

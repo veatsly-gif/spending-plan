@@ -12,6 +12,7 @@ use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Service\Controller\Web\DashboardControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -164,7 +165,7 @@ final class DashboardController extends AbstractController
                 ]);
             }
 
-            $this->addFlash('error', $result->errorMessage ?? 'income.unable_update');
+            $form->get('amount')->addError(new FormError($result->errorMessage ?? 'income.unable_update'));
         }
 
         return $this->render('dashboard/income_edit.html.twig', [
@@ -339,7 +340,12 @@ final class DashboardController extends AbstractController
                 ]);
             }
 
-            $this->addFlash('error', $result->errorMessage ?? 'spend.unable_update');
+            $normalized = mb_strtolower((string) ($result->errorMessage ?? ''));
+            if (str_contains($normalized, 'spend date')) {
+                $form->get('spendDate')->addError(new FormError($result->errorMessage ?? 'spend.unable_update'));
+            } else {
+                $form->get('amount')->addError(new FormError($result->errorMessage ?? 'spend.unable_update'));
+            }
         }
 
         return $this->render('dashboard/spend_edit.html.twig', [

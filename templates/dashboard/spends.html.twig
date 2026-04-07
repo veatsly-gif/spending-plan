@@ -6,23 +6,25 @@
 {% block body %}
     {% set query = app.request.query.all %}
 
-    <main class="panel reveal">
-        <span class="kicker">{{ 'spends.kicker'|trans }}</span>
+    <main class="panel reveal panel-with-corner-action">
+        <div class="panel-head-inline">
+            <span class="kicker">{{ 'spends.kicker'|trans }}</span>
+            <a class="btn btn-ghost panel-corner-action" href="{{ path('app_dashboard') }}">{{ 'common.back_to_dashboard'|trans }}</a>
+        </div>
         <h1>{{ 'spends.heading'|trans({'%month%': monthLabel}) }}</h1>
 
         <div class="actions" style="margin-top: 10px;">
-            <a class="btn btn-ghost" href="{{ path('app_dashboard') }}">{{ 'common.back_to_dashboard'|trans }}</a>
             <a
-                class="btn btn-ghost"
-                href="{{ path('app_dashboard_spends', query|merge({month: previousMonthKey, page: 1})) }}"
+                class="sp-tab {{ viewMode == 'stream' ? 'is-active' : '' }}"
+                href="{{ path('app_dashboard_spends', query|merge({view: 'stream', page: 1})) }}"
             >
-                {{ 'spends.previous_month'|trans({'%month%': previousMonthKey}) }}
+                {{ 'spends.view.stream'|trans }}
             </a>
             <a
-                class="btn btn-ghost"
-                href="{{ path('app_dashboard_spends', query|merge({month: nextMonthKey, page: 1})) }}"
+                class="sp-tab {{ viewMode == 'table' ? 'is-active' : '' }}"
+                href="{{ path('app_dashboard_spends', query|merge({view: 'table', page: 1})) }}"
             >
-                {{ 'spends.next_month'|trans({'%month%': nextMonthKey}) }}
+                {{ 'spends.view.table'|trans }}
             </a>
         </div>
 
@@ -43,6 +45,7 @@
                 <input type="hidden" name="month" value="{{ selectedMonthKey }}">
                 <input type="hidden" name="sort" value="{{ sort }}">
                 <input type="hidden" name="dir" value="{{ dir }}">
+                <input type="hidden" name="view" value="{{ viewMode }}">
 
                 <div class="spend-filter-field spend-filter-currency">
                     <label for="currency">{{ 'common.currency'|trans }}</label>
@@ -94,7 +97,7 @@
                     <button type="submit">{{ 'common.apply'|trans }}</button>
                     <a
                         class="btn btn-ghost"
-                        href="{{ path('app_dashboard_spends', {month: selectedMonthKey, sort: sort, dir: dir, perPage: perPage}) }}"
+                        href="{{ path('app_dashboard_spends', {month: selectedMonthKey, sort: sort, dir: dir, perPage: perPage, view: viewMode}) }}"
                     >
                         {{ 'spends.filters.reset'|trans }}
                     </a>
@@ -107,56 +110,104 @@
                 <strong>{{ 'spends.empty'|trans }}</strong>
             </div>
         {% else %}
-            <div class="table-wrap" style="margin-top: 14px;">
-                <table>
-                    <thead>
-                        <tr>
-                            {% set nextDir = sort == 'spendDate' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'spendDate', dir: nextDir, page: 1})) }}">{{ 'spends.table.spend_date'|trans }}</a></th>
-
-                            {% set nextDir = sort == 'username' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'username', dir: nextDir, page: 1})) }}">{{ 'common.user'|trans }}</a></th>
-
-                            {% set nextDir = sort == 'amount' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'amount', dir: nextDir, page: 1})) }}">{{ 'common.amount'|trans }}</a></th>
-
-                            {% set nextDir = sort == 'currency' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'currency', dir: nextDir, page: 1})) }}">{{ 'common.currency'|trans }}</a></th>
-
-                            {% set nextDir = sort == 'spendingPlan' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'spendingPlan', dir: nextDir, page: 1})) }}">{{ 'common.plan'|trans }}</a></th>
-
-                            <th>{{ 'common.comment'|trans }}</th>
-
-                            {% set nextDir = sort == 'createdAt' and dir == 'asc' ? 'desc' : 'asc' %}
-                            <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'createdAt', dir: nextDir, page: 1})) }}">{{ 'spends.table.added_at'|trans }}</a></th>
-                            <th>{{ 'common.actions'|trans }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for spend in spends %}
+            {% if viewMode == 'stream' %}
+                <section class="spend-stream" style="margin-top: 14px;">
+                    {% for group in streamGroups %}
+                        <details class="spend-stream-group" {{ group.expanded ? 'open' : '' }}>
+                            <summary class="spend-stream-summary">
+                                <div class="spend-stream-summary-inner">
+                                    <span class="spend-stream-title">
+                                        {{ group.name }}
+                                        {% if group.current %}
+                                            <span class="badge">{{ 'spends.stream.current_plan'|trans }}</span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="spend-stream-meta">
+                                        <span>{{ 'spends.stream.spent'|trans }}: <strong>{{ group.totalAmountLabel }}</strong></span>
+                                        <span>{{ 'spends.stream.planned'|trans }}: <strong>{{ group.plannedAmountLabel }}</strong></span>
+                                    </span>
+                                </div>
+                                <span class="spend-stream-chevron" aria-hidden="true"></span>
+                            </summary>
+                            <div class="spend-stream-body">
+                                {% if group.spends is empty %}
+                                    <p class="spend-stream-empty">{{ 'spends.stream.no_spends_in_plan'|trans }}</p>
+                                {% else %}
+                                    {% for spend in group.spends %}
+                                        <article class="spend-stream-item">
+                                            <div class="spend-stream-item-inner">
+                                                <div class="spend-stream-item-line">
+                                                    <span class="spend-stream-item-field is-amount">{{ spend.amount }} {{ spend.currencyCode }}</span>
+                                                    <span class="spend-stream-item-field is-comment">{{ spend.comment ?? '-' }}</span>
+                                                    <span class="spend-stream-item-field is-datetime">{{ spend.createdAtLabel }}</span>
+                                                    <span class="spend-stream-item-field is-author">{{ spend.username }}</span>
+                                                </div>
+                                                {% include 'components/_row_actions_edit_delete.html.twig' with {
+                                                    editHref: path('app_dashboard_spends_edit', {id: spend.id}),
+                                                    deleteAction: path('app_dashboard_spends_delete', {id: spend.id}),
+                                                    csrfToken: csrf_token('delete_spend_' ~ spend.id),
+                                                    deleteConfirm: 'spend.confirm_delete'|trans,
+                                                    rowActionsClass: 'spend-stream-item-actions'
+                                                } %}
+                                            </div>
+                                        </article>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </section>
+            {% else %}
+                <div class="table-wrap" style="margin-top: 14px;">
+                    <table>
+                        <thead>
                             <tr>
-                                <td>{{ spend.spendDateLabel }}</td>
-                                <td>{{ spend.username }}</td>
-                                <td>{{ spend.amount }}</td>
-                                <td>{{ spend.currencyCode }}</td>
-                                <td>{{ spend.spendingPlanName }}</td>
-                                <td>{{ spend.comment ?? '-' }}</td>
-                                <td>{{ spend.createdAtLabel }}</td>
-                                <td>
-                                    <div class="actions">
-                                        <a class="btn btn-ghost" href="{{ path('app_dashboard_spends_edit', {id: spend.id}) }}">{{ 'common.edit'|trans }}</a>
-                                        <form method="post" action="{{ path('app_dashboard_spends_delete', {id: spend.id}) }}" onsubmit="return confirm('{{ 'spend.confirm_delete'|trans }}');">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('delete_spend_' ~ spend.id) }}">
-                                            <button type="submit" class="btn btn-danger">{{ 'common.delete'|trans }}</button>
-                                        </form>
-                                    </div>
-                                </td>
+                                {% set nextDir = sort == 'spendDate' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'spendDate', dir: nextDir, page: 1})) }}">{{ 'spends.table.spend_date'|trans }}</a></th>
+
+                                {% set nextDir = sort == 'username' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'username', dir: nextDir, page: 1})) }}">{{ 'common.user'|trans }}</a></th>
+
+                                {% set nextDir = sort == 'amount' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'amount', dir: nextDir, page: 1})) }}">{{ 'common.amount'|trans }}</a></th>
+
+                                {% set nextDir = sort == 'currency' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'currency', dir: nextDir, page: 1})) }}">{{ 'common.currency'|trans }}</a></th>
+
+                                {% set nextDir = sort == 'spendingPlan' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'spendingPlan', dir: nextDir, page: 1})) }}">{{ 'common.plan'|trans }}</a></th>
+
+                                <th>{{ 'common.comment'|trans }}</th>
+
+                                {% set nextDir = sort == 'createdAt' and dir == 'asc' ? 'desc' : 'asc' %}
+                                <th><a href="{{ path('app_dashboard_spends', query|merge({sort: 'createdAt', dir: nextDir, page: 1})) }}">{{ 'spends.table.added_at'|trans }}</a></th>
+                                <th>{{ 'common.actions'|trans }}</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {% for spend in spends %}
+                                <tr>
+                                    <td>{{ spend.spendDateLabel }}</td>
+                                    <td>{{ spend.username }}</td>
+                                    <td>{{ spend.amount }}</td>
+                                    <td>{{ spend.currencyCode }}</td>
+                                    <td>{{ spend.spendingPlanName }}</td>
+                                    <td>{{ spend.comment ?? '-' }}</td>
+                                    <td>{{ spend.createdAtLabel }}</td>
+                                    <td class="table-row-actions-cell">
+                                        {% include 'components/_row_actions_edit_delete.html.twig' with {
+                                            editHref: path('app_dashboard_spends_edit', {id: spend.id}),
+                                            deleteAction: path('app_dashboard_spends_delete', {id: spend.id}),
+                                            csrfToken: csrf_token('delete_spend_' ~ spend.id),
+                                            deleteConfirm: 'spend.confirm_delete'|trans
+                                        } %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
 
             <div class="grid metrics" style="margin-top: 14px;">
                 <article class="metric">
@@ -169,7 +220,7 @@
                 </article>
             </div>
 
-            {% if totalPages > 1 %}
+            {% if viewMode == 'table' and totalPages > 1 %}
                 <nav class="pagination" aria-label="{{ 'spends.pagination'|trans }}">
                     <a
                         class="btn btn-ghost {{ page <= 1 ? 'is-disabled' : '' }}"

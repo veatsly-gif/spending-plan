@@ -175,6 +175,14 @@ spends:
     search_placeholder: "комментарий, пользователь, план"
     rows_per_page: "Строк на странице"
     reset: "Сбросить фильтры"
+  view:
+    stream: "Лента"
+    table: "Таблица"
+  stream:
+    current_plan: "Текущий"
+    spent: "Потрачено"
+    planned: "План"
+    no_spends_in_plan: "В этом плане пока нет расходов."
 
 spend:
   edit_title: "Редактировать расход"

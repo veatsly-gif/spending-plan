@@ -11,6 +11,7 @@ use App\Repository\TelegramUserRepository;
 use App\Service\Controller\Web\DashboardControllerService;
 use App\Service\TelegramMiniAppTokenService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -172,7 +173,12 @@ final class TelegramMiniAppController extends AbstractController
                 return $this->redirectToRoute('app_telegram_mini_spend', ['token' => $token]);
             }
 
-            $this->addFlash('error', $result->errorMessage ?? 'spend.unable_update');
+            $normalized = mb_strtolower((string) ($result->errorMessage ?? ''));
+            if (str_contains($normalized, 'spend date')) {
+                $form->get('spendDate')->addError(new FormError($result->errorMessage ?? 'spend.unable_update'));
+            } else {
+                $form->get('amount')->addError(new FormError($result->errorMessage ?? 'spend.unable_update'));
+            }
         }
 
         return $this->render('telegram/mini_spend_edit.html.twig', [

@@ -40,11 +40,12 @@
                                     {{ 'admin.tech_tasks.updated_at'|trans }} {{ task.updatedAt|date('Y-m-d H:i') }}
                                 </p>
                                 <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_tech_tasks_edit', {id: task.id}) }}">{{ 'common.edit'|trans }}</a>
-                                    <form method="post" action="{{ path('admin_tech_tasks_delete', {id: task.id}) }}" onsubmit="return confirm('{{ 'admin.tech_tasks.confirm_delete'|trans({'%title%': task.title})|e('js') }}');">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_tech_task_' ~ task.id) }}">
-                                        <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
-                                    </form>
+                                    {% include 'components/_row_actions_edit_delete.html.twig' with {
+                                        editHref: path('admin_tech_tasks_edit', {id: task.id}),
+                                        deleteAction: path('admin_tech_tasks_delete', {id: task.id}),
+                                        csrfToken: csrf_token('delete_tech_task_' ~ task.id),
+                                        deleteConfirm: 'admin.tech_tasks.confirm_delete'|trans({'%title%': task.title})
+                                    } %}
                                 </div>
                             </article>
                         {% endfor %}

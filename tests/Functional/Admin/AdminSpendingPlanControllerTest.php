@@ -68,7 +68,7 @@ final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
         );
 
         $this->loginAs('admin');
-        $crawler = $this->client->request('GET', '/admin/spending-plans');
+        $crawler = $this->client->request('GET', '/admin/spending-plans?month='.$monthKey);
         self::assertResponseIsSuccessful();
 
         $suggestion = $crawler->filter('[data-suggestion-id]')->first();
@@ -143,6 +143,86 @@ final class AdminSpendingPlanControllerTest extends DatabaseWebTestCase
         self::assertInstanceOf(SpendingPlan::class, $spendingPlan);
         self::assertSame('1000.00', $spendingPlan->getLimitAmount());
         self::assertSame(10, $spendingPlan->getWeight());
+    }
+
+    public function testAdminCanCreateSpendingPlanFromNextMonthTab(): void
+    {
+        $this->loginAs('admin');
+        $nextMonthStart = new \DateTimeImmutable('first day of next month');
+        $nextMonthKey = $nextMonthStart->format('Y-m');
+
+        $crawler = $this->client->request('GET', '/admin/spending-plans/new?month='.$nextMonthKey);
+        self::assertResponseIsSuccessful();
+
+        $dateFromValue = (string) $crawler->filter('input[name="admin_spending_plan[dateFrom]"]')->attr('value');
+        $dateToValue = (string) $crawler->filter('input[name="admin_spending_plan[dateTo]"]')->attr('value');
+        self::assertSame($nextMonthStart->format('Y-m-d'), $dateFromValue);
+        self::assertSame($nextMonthStart->format('Y-m-d'), $dateToValue);
+
+        $currencyValue = (string) $crawler
+            ->filter('select[name="admin_spending_plan[currency]"] option')
+            ->first()
+            ->attr('value');
+
+        $form = $crawler->selectButton('Create')->form([
+            'admin_spending_plan[name]' => 'Next month tab plan',
+            'admin_spending_plan[planType]' => SpendingPlan::PLAN_TYPE_CUSTOM,
+            'admin_spending_plan[dateFrom]' => $dateFromValue,
+            'admin_spending_plan[dateTo]' => $dateToValue,
+            'admin_spending_plan[limitAmount]' => '200',
+            'admin_spending_plan[currency]' => $currencyValue,
+            'admin_spending_plan[weight]' => '1',
+            'admin_spending_plan[isSystem]' => false,
+            'admin_spending_plan[note]' => 'Created from next month tab',
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseRedirects('/admin/spending-plans?month='.$nextMonthKey);
+
+        $this->entityManager->clear();
+        $spendingPlan = $this->entityManager
+            ->getRepository(SpendingPlan::class)
+            ->findOneBy(['name' => 'Next month tab plan']);
+        self::assertInstanceOf(SpendingPlan::class, $spendingPlan);
+        self::assertSame($nextMonthKey, $spendingPlan->getDateFrom()->format('Y-m'));
+        self::assertSame($nextMonthKey, $spendingPlan->getDateTo()->format('Y-m'));
+    }
+
+    public function testAdminCreateSpendingPlanValidationKeepsEnteredValues(): void
+    {
+        $this->loginAs('admin');
+        $crawler = $this->client->request('GET', '/admin/spending-plans/new');
+        self::assertResponseIsSuccessful();
+
+        $currencyValue = (string) $crawler
+            ->filter('select[name="admin_spending_plan[currency]"] option')
+            ->first()
+            ->attr('value');
+
+        $form = $crawler->selectButton('Create')->form([
+            'admin_spending_plan[name]' => 'Broken date range plan',
+            'admin_spending_plan[planType]' => SpendingPlan::PLAN_TYPE_CUSTOM,
+            'admin_spending_plan[dateFrom]' => '2026-05-20',
+            'admin_spending_plan[dateTo]' => '2026-05-10',
+            'admin_spending_plan[limitAmount]' => '100',
+            'admin_spending_plan[currency]' => $currencyValue,
+            'admin_spending_plan[weight]' => '1',
+            'admin_spending_plan[isSystem]' => false,
+            'admin_spending_plan[note]' => 'Should stay on form',
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseStatusCodeSame(422);
+        $invalidCrawler = $this->client->getCrawler();
+        $content = html_entity_decode((string) $this->client->getResponse()->getContent(), ENT_QUOTES | ENT_HTML5);
+        self::assertStringContainsString(
+            'Date "to" must be greater than or equal to date "from".',
+            $content
+        );
+
+        self::assertSame('Broken date range plan', (string) $invalidCrawler->filter('input[name="admin_spending_plan[name]"]')->attr('value'));
+        self::assertSame('2026-05-20', (string) $invalidCrawler->filter('input[name="admin_spending_plan[dateFrom]"]')->attr('value'));
+        self::assertSame('2026-05-10', (string) $invalidCrawler->filter('input[name="admin_spending_plan[dateTo]"]')->attr('value'));
     }
 
     public function testAdminCanChangeSpendingPlanCurrencyOnEdit(): void

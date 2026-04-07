@@ -175,6 +175,14 @@ spends:
     search_placeholder: "comment, user, plan"
     rows_per_page: "Rows per page"
     reset: "Reset filters"
+  view:
+    stream: "Stream"
+    table: "Table"
+  stream:
+    current_plan: "Current"
+    spent: "Spent"
+    planned: "Planned"
+    no_spends_in_plan: "No spends in this plan."
 
 spend:
   edit_title: "Edit spend"

@@ -27,7 +27,8 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
             'testDashboardShowsSpendWidgetFromStoredRecords',
             'testSpendsPageSupportsFiltersAndPagination',
             'testUserCanEditSpendFromSpendsPage',
-            'testUserCanDeleteSpendFromSpendsPage' => [
+            'testUserCanDeleteSpendFromSpendsPage',
+            'testUserCanEditOtherUsersSpendFromSpendsPage' => [
                 BaseCurrenciesFixture::class,
                 BaseUsersFixture::class,
                 CurrentMonthSpendingPlanFixture::class,
@@ -113,6 +114,7 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
 
         $crawler = $this->client->request('GET', '/dashboard/spends');
         self::assertResponseIsSuccessful();
+        self::assertSame(1, $crawler->filter('a.sp-tab.is-active[href*="view=stream"]')->count());
         self::assertStringContainsString('Groceries basket', $crawler->text(''));
         self::assertStringContainsString('Taxi and metro', $crawler->text(''));
 
@@ -121,7 +123,7 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
         self::assertStringContainsString('Taxi and metro', $crawler->text(''));
         self::assertStringNotContainsString('Groceries basket', $crawler->text(''));
 
-        $crawler = $this->client->request('GET', '/dashboard/spends?perPage=1&page=2');
+        $crawler = $this->client->request('GET', '/dashboard/spends?view=table&perPage=1&page=2');
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Groceries basket', $crawler->text(''));
         self::assertStringNotContainsString('Taxi and metro', $crawler->text(''));
@@ -220,6 +222,139 @@ final class DashboardSpendControllerTest extends DatabaseWebTestCase
         $this->entityManager->clear();
         $removedSpend = $this->entityManager->getRepository(Spend::class)->find($spend->getId());
         self::assertNull($removedSpend);
+    }
+
+    public function testUserCanEditOtherUsersSpendFromSpendsPage(): void
+    {
+        $otherUser = $this->entityManager->getRepository(User::class)->findOneBy([
+            'username' => BaseUsersFixture::INCOMER_USERNAME,
+        ]);
+        self::assertInstanceOf(User::class, $otherUser);
+
+        $plan = $this->entityManager->getRepository(SpendingPlan::class)->findOneBy([
+            'name' => 'March base plan',
+        ]);
+        self::assertInstanceOf(SpendingPlan::class, $plan);
+
+        $currency = $this->entityManager->getRepository(Currency::class)->findOneBy([
+            'code' => 'GEL',
+        ]);
+        self::assertInstanceOf(Currency::class, $currency);
+
+        $spend = (new Spend())
+            ->setUserAdded($otherUser)
+            ->setSpendingPlan($plan)
+            ->setAmount('77.70')
+            ->setCurrency($currency)
+            ->setSpendDate((new \DateTimeImmutable('today'))->setTime(0, 0))
+            ->setComment('Other user spend editable')
+            ->setCreatedAt(new \DateTimeImmutable('now'));
+
+        $this->entityManager->persist($spend);
+        $this->entityManager->flush();
+
+        $this->loginAs(BaseUsersFixture::TEST_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard/spends/'.$spend->getId().'/edit');
+        self::assertResponseIsSuccessful();
+
+        $form = $crawler->selectButton('Save')->form([
+            'dashboard_spend[amount]' => '88.80',
+            'dashboard_spend[currency]' => (string) $currency->getId(),
+            'dashboard_spend[spendingPlan]' => (string) $plan->getId(),
+            'dashboard_spend[spendDate]' => $spend->getSpendDate()->format('Y-m-d'),
+            'dashboard_spend[comment]' => 'Other user spend edited',
+        ]);
+        $this->client->submit($form);
+
+        self::assertResponseRedirects('/dashboard/spends?month='.(new \DateTimeImmutable('first day of this month'))->format('Y-m'));
+
+        $this->entityManager->clear();
+        $updated = $this->entityManager->getRepository(Spend::class)->find($spend->getId());
+        self::assertInstanceOf(Spend::class, $updated);
+        self::assertSame('88.80', $updated->getAmount());
+        self::assertSame('Other user spend edited', $updated->getComment());
+    }
+
+    public function testUserCanAddSpendForPastAndFutureSpendingPlans(): void
+    {
+        $currency = $this->entityManager->getRepository(Currency::class)->findOneBy(['code' => 'GEL']);
+        self::assertInstanceOf(Currency::class, $currency);
+
+        $prevMonthStart = (new \DateTimeImmutable('first day of previous month'))->setTime(0, 0);
+        $nextMonthStart = (new \DateTimeImmutable('first day of next month'))->setTime(0, 0);
+
+        $pastPlan = (new SpendingPlan())
+            ->setName('Past month groceries plan')
+            ->setPlanType(SpendingPlan::PLAN_TYPE_REGULAR)
+            ->setDateFrom($prevMonthStart)
+            ->setDateTo($prevMonthStart->modify('last day of this month'))
+            ->setLimitAmount('500.00')
+            ->setCurrency($currency)
+            ->setWeight(0)
+            ->setIsSystem(false);
+        $futurePlan = (new SpendingPlan())
+            ->setName('Future month travel plan')
+            ->setPlanType(SpendingPlan::PLAN_TYPE_PLANNED)
+            ->setDateFrom($nextMonthStart)
+            ->setDateTo($nextMonthStart->modify('last day of this month'))
+            ->setLimitAmount('900.00')
+            ->setCurrency($currency)
+            ->setWeight(0)
+            ->setIsSystem(false);
+        $this->entityManager->persist($pastPlan);
+        $this->entityManager->persist($futurePlan);
+        $this->entityManager->flush();
+
+        $this->loginAs(BaseUsersFixture::TEST_USERNAME);
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+
+        $pastPlanOption = $crawler->filterXPath(
+            '//select[@name="dashboard_spend[spendingPlan]"]/option[contains(normalize-space(.), "Past month groceries plan")]'
+        )->first();
+        self::assertSame(1, $pastPlanOption->count());
+        $pastPlanValue = (string) $pastPlanOption->attr('value');
+
+        $futurePlanOption = $crawler->filterXPath(
+            '//select[@name="dashboard_spend[spendingPlan]"]/option[contains(normalize-space(.), "Future month travel plan")]'
+        )->first();
+        self::assertSame(1, $futurePlanOption->count());
+        $futurePlanValue = (string) $futurePlanOption->attr('value');
+
+        $currencyOption = $crawler->filterXPath(
+            '//select[@name="dashboard_spend[currency]"]/option[contains(normalize-space(.), "GEL")]'
+        )->first();
+        self::assertSame(1, $currencyOption->count());
+        $currencyValue = (string) $currencyOption->attr('value');
+
+        $this->client->submit($crawler->selectButton('Add spend')->form([
+            'dashboard_spend[amount]' => '11.10',
+            'dashboard_spend[currency]' => $currencyValue,
+            'dashboard_spend[spendingPlan]' => $pastPlanValue,
+            'dashboard_spend[spendDate]' => $prevMonthStart->modify('+2 day')->format('Y-m-d'),
+            'dashboard_spend[comment]' => 'Past plan spend',
+        ]));
+        self::assertResponseRedirects('/dashboard');
+
+        $crawler = $this->client->request('GET', '/dashboard');
+        self::assertResponseIsSuccessful();
+        $this->client->submit($crawler->selectButton('Add spend')->form([
+            'dashboard_spend[amount]' => '22.20',
+            'dashboard_spend[currency]' => $currencyValue,
+            'dashboard_spend[spendingPlan]' => $futurePlanValue,
+            'dashboard_spend[spendDate]' => $nextMonthStart->modify('+3 day')->format('Y-m-d'),
+            'dashboard_spend[comment]' => 'Future plan spend',
+        ]));
+        self::assertResponseRedirects('/dashboard');
+
+        $this->entityManager->clear();
+        $pastSpend = $this->entityManager->getRepository(Spend::class)->findOneBy(['comment' => 'Past plan spend']);
+        self::assertInstanceOf(Spend::class, $pastSpend);
+        self::assertSame('Past month groceries plan', $pastSpend->getSpendingPlan()?->getName());
+
+        $futureSpend = $this->entityManager->getRepository(Spend::class)->findOneBy(['comment' => 'Future plan spend']);
+        self::assertInstanceOf(Spend::class, $futureSpend);
+        self::assertSame('Future month travel plan', $futureSpend->getSpendingPlan()?->getName());
     }
 
     public function testSpendFormPlansFollowPrioritySortingRules(): void

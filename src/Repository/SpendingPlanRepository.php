@@ -155,6 +155,21 @@ class SpendingPlanRepository extends ServiceEntityRepository
         return $this->findForMonth($monthStart, $monthEnd, $d);
     }
 
+    /**
+     * Full spend form choice set across all months, sorted by display priority
+     * relative to the provided date.
+     *
+     * @return list<SpendingPlan>
+     */
+    public function findAllForSpendSelection(\DateTimeImmutable $date): array
+    {
+        $referenceDate = $date->setTime(0, 0);
+        /** @var list<SpendingPlan> $plans */
+        $plans = $this->findBy([], ['dateFrom' => 'ASC', 'weight' => 'DESC', 'id' => 'ASC']);
+
+        return SpendingPlanDisplaySorter::sort($plans, $referenceDate);
+    }
+
     public function findBestForDate(\DateTimeImmutable $date): ?SpendingPlan
     {
         $day = $date->setTime(0, 0);

@@ -76,9 +76,12 @@ final class AdminSpendingPlanControllerService
         );
     }
 
-    public function createDraftSpendingPlan(): AdminSpendingPlanDraftDto
+    public function createDraftSpendingPlan(?string $selectedMonthKey = null): AdminSpendingPlanDraftDto
     {
         $today = (new \DateTimeImmutable())->setTime(0, 0);
+        $monthStart = null !== $this->sanitizeMonthKey($selectedMonthKey)
+            ? $this->monthStart($selectedMonthKey)
+            : $today;
         $gel = $this->currencyRepository->findOneByCode('GEL');
         if (null === $gel) {
             throw new \RuntimeException('Currency GEL is not configured.');
@@ -87,8 +90,8 @@ final class AdminSpendingPlanControllerService
         $draft = (new SpendingPlan())
             ->setName('Custom plan')
             ->setPlanType(SpendingPlan::PLAN_TYPE_CUSTOM)
-            ->setDateFrom($today)
-            ->setDateTo($today)
+            ->setDateFrom($monthStart)
+            ->setDateTo($monthStart)
             ->setLimitAmount('0.00')
             ->setCurrency($gel)
             ->setWeight(1)

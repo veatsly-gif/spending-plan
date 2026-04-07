@@ -116,6 +116,11 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
             0,
             $crawler->filter('a[href*="/telegram/mini/spends/"][href*="/edit?token="]')->count()
         );
+
+        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token).'&tab=spends');
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $crawler->filter('a.mini-view-toggle-btn.is-stream[href*="view=table"]')->count());
+        self::assertGreaterThan(0, $crawler->filter('.spend-stream-group')->count());
     }
 
     public function testAuthorizedTelegramUserCanEditSpendFromMiniApp(): void

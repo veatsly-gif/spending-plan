@@ -8,6 +8,7 @@ use App\Entity\TechTask;
 use App\Form\Admin\AdminTechTaskType;
 use App\Repository\TechTaskRepository;
 use App\Service\Controller\Admin\AdminTechTaskControllerService;
+use Symfony\Component\Form\FormError;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,14 +35,12 @@ final class AdminTechTaskController extends AbstractController
         if ($createForm->isSubmitted() && $createForm->isValid()) {
             $result = $this->service->createTask($task, $techTaskRepository);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to create task.');
+                $createForm->get('title')->addError(new FormError($result->errorMessage ?? 'Unable to create task.'));
+            } else {
+                $this->addFlash('success', 'Task created.');
 
                 return $this->redirectToRoute('admin_tech_tasks_index');
             }
-
-            $this->addFlash('success', 'Task created.');
-
-            return $this->redirectToRoute('admin_tech_tasks_index');
         }
 
         return $this->render('admin/tech_tasks/index.html.twig', [
@@ -63,14 +62,12 @@ final class AdminTechTaskController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $result = $this->service->updateTask($task, $originalStatus, $techTaskRepository);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to update task.');
+                $form->get('title')->addError(new FormError($result->errorMessage ?? 'Unable to update task.'));
+            } else {
+                $this->addFlash('success', 'Task updated.');
 
                 return $this->redirectToRoute('admin_tech_tasks_index');
             }
-
-            $this->addFlash('success', 'Task updated.');
-
-            return $this->redirectToRoute('admin_tech_tasks_index');
         }
 
         return $this->render('admin/tech_tasks/edit.html.twig', [

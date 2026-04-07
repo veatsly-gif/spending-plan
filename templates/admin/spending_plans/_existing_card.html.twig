@@ -14,10 +14,11 @@
         <p>{{ plan.note }}</p>
     {% endif %}
     <div class="actions">
-        <a class="btn btn-ghost" href="{{ path('admin_spending_plans_edit', {id: plan.id}) }}">{{ 'common.edit'|trans }}</a>
-        <form method="post" action="{{ path('admin_spending_plans_delete', {id: plan.id}) }}" onsubmit="return confirm('{{ 'admin.spending_plans.confirm_delete'|trans({'%name%': plan.name})|e('js') }}');">
-            <input type="hidden" name="_token" value="{{ csrf_token('delete_spending_plan_' ~ plan.id) }}">
-            <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
-        </form>
+        {% include 'components/_row_actions_edit_delete.html.twig' with {
+            editHref: path('admin_spending_plans_edit', {id: plan.id}),
+            deleteAction: path('admin_spending_plans_delete', {id: plan.id}),
+            csrfToken: csrf_token('delete_spending_plan_' ~ plan.id),
+            deleteConfirm: 'admin.spending_plans.confirm_delete'|trans({'%name%': plan.name})
+        } %}
     </div>
 </article>

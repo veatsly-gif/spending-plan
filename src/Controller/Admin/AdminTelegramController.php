@@ -13,6 +13,7 @@ use App\Repository\UserRepository;
 use App\Service\Controller\Admin\AdminTelegramControllerService;
 use App\Service\TelegramBotService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -59,14 +60,12 @@ final class AdminTelegramController extends AbstractController
 
             $result = $this->service->approveByLinkingUser($telegramUser, $selectedUser, $telegramUserRepository, $telegramBotService);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to approve telegram user.');
+                $form->get('user')->addError(new FormError($result->errorMessage ?? 'Unable to approve telegram user.'));
+            } else {
+                $this->addFlash('success', 'Telegram user approved and linked.');
 
                 return $this->redirectToRoute('admin_telegram_pending');
             }
-
-            $this->addFlash('success', 'Telegram user approved and linked.');
-
-            return $this->redirectToRoute('admin_telegram_pending');
         }
 
         return $this->render('admin/telegram/approve.html.twig', [
@@ -103,14 +102,12 @@ final class AdminTelegramController extends AbstractController
             );
 
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to create local user.');
+                $form->get('username')->addError(new FormError($result->errorMessage ?? 'Unable to create local user.'));
+            } else {
+                $this->addFlash('success', 'Local user created and Telegram user approved.');
 
-                return $this->redirectToRoute('admin_telegram_create_user', ['id' => $telegramUser->getId()]);
+                return $this->redirectToRoute('admin_telegram_pending');
             }
-
-            $this->addFlash('success', 'Local user created and Telegram user approved.');
-
-            return $this->redirectToRoute('admin_telegram_pending');
         }
 
         return $this->render('admin/telegram/create_user.html.twig', [

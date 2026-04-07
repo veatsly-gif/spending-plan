@@ -9,6 +9,15 @@ final readonly class DashboardSpendListPageDto
     /**
      * @param list<DashboardMonthTabDto> $monthTabs
      * @param list<DashboardSpendItemDto> $spends
+     * @param list<array{
+     *     id: int,
+     *     name: string,
+     *     totalAmountLabel: string,
+     *     plannedAmountLabel: string,
+     *     current: bool,
+     *     expanded: bool,
+     *     spends: list<DashboardSpendItemDto>
+     * }> $streamGroups
      * @param list<string> $availableCurrencies
      * @param list<string> $availableUsers
      * @param list<array{id: int, label: string}> $availablePlans
@@ -18,8 +27,10 @@ final readonly class DashboardSpendListPageDto
         public string $selectedMonthKey,
         public string $previousMonthKey,
         public string $nextMonthKey,
+        public string $viewMode,
         public array $monthTabs,
         public array $spends,
+        public array $streamGroups,
         public int $totalRecords,
         public string $totalAmountLabel,
         public string $sort,
@@ -44,8 +55,18 @@ final readonly class DashboardSpendListPageDto
      *     selectedMonthKey: string,
      *     previousMonthKey: string,
      *     nextMonthKey: string,
+     *     viewMode: string,
      *     monthTabs: list<array{monthKey: string, label: string, active: bool}>,
      *     spends: list<DashboardSpendItemDto>,
+     *     streamGroups: list<array{
+     *         id: int,
+     *         name: string,
+     *         totalAmountLabel: string,
+     *         plannedAmountLabel: string,
+     *         current: bool,
+     *         expanded: bool,
+     *         spends: list<DashboardSpendItemDto>
+     *     }>,
      *     totalRecords: int,
      *     totalAmountLabel: string,
      *     sort: string,
@@ -75,8 +96,10 @@ final readonly class DashboardSpendListPageDto
             'selectedMonthKey' => $this->selectedMonthKey,
             'previousMonthKey' => $this->previousMonthKey,
             'nextMonthKey' => $this->nextMonthKey,
+            'viewMode' => $this->viewMode,
             'monthTabs' => $monthTabs,
             'spends' => $this->spends,
+            'streamGroups' => $this->streamGroups,
             'totalRecords' => $this->totalRecords,
             'totalAmountLabel' => $this->totalAmountLabel,
             'sort' => $this->sort,

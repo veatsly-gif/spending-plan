@@ -10,6 +10,8 @@ use App\Form\Admin\AdminUserEditType;
 use App\Form\Admin\AdminUserPasswordType;
 use App\Repository\UserRepository;
 use App\Service\Controller\Admin\AdminUserControllerService;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,13 +49,12 @@ final class AdminUserController extends AbstractController
             $plainPassword = (string) $form->get('plainPassword')->getData();
             $result = $this->service->createUser($user, $plainPassword, $userRepository, $passwordHasher);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to create user.');
+                $this->addErrorToUserField($form, $result->errorMessage ?? 'Unable to create user.', true);
+            } else {
+                $this->addFlash('success', 'User created.');
 
                 return $this->redirectToRoute('admin_users_index');
             }
-            $this->addFlash('success', 'User created.');
-
-            return $this->redirectToRoute('admin_users_index');
         }
 
         return $this->render('admin/users/new.html.twig', [
@@ -70,13 +71,12 @@ final class AdminUserController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $result = $this->service->updateUser($user, $userRepository);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to update user.');
+                $this->addErrorToUserField($form, $result->errorMessage ?? 'Unable to update user.', false);
+            } else {
+                $this->addFlash('success', 'User updated.');
 
                 return $this->redirectToRoute('admin_users_index');
             }
-            $this->addFlash('success', 'User updated.');
-
-            return $this->redirectToRoute('admin_users_index');
         }
 
         return $this->render('admin/users/edit.html.twig', [
@@ -95,13 +95,12 @@ final class AdminUserController extends AbstractController
             $plainPassword = (string) $form->get('plainPassword')->getData();
             $result = $this->service->changeUserPassword($user, $plainPassword, $userRepository, $passwordHasher);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to change password.');
+                $form->get('plainPassword')->addError(new FormError($result->errorMessage ?? 'Unable to change password.'));
+            } else {
+                $this->addFlash('success', 'Password changed.');
 
                 return $this->redirectToRoute('admin_users_index');
             }
-            $this->addFlash('success', 'Password changed.');
-
-            return $this->redirectToRoute('admin_users_index');
         }
 
         return $this->render('admin/users/password.html.twig', [
@@ -138,5 +137,23 @@ final class AdminUserController extends AbstractController
         $this->addFlash('success', 'User removed.');
 
         return $this->redirectToRoute('admin_users_index');
+    }
+
+    private function addErrorToUserField(FormInterface $form, string $message, bool $hasPasswordField): void
+    {
+        $normalized = mb_strtolower($message);
+        if (str_contains($normalized, 'password') && $hasPasswordField) {
+            $form->get('plainPassword')->addError(new FormError($message));
+
+            return;
+        }
+
+        if (str_contains($normalized, 'role')) {
+            $form->get('roles')->addError(new FormError($message));
+
+            return;
+        }
+
+        $form->get('username')->addError(new FormError($message));
     }
 }

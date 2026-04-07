@@ -8,6 +8,8 @@ use App\Entity\SpendingPlan;
 use App\Form\Admin\AdminSpendingPlanType;
 use App\Repository\SpendingPlanRepository;
 use App\Service\Controller\Admin\AdminSpendingPlanControllerService;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -38,7 +40,10 @@ final class AdminSpendingPlanController extends AbstractController
     #[Route('/new', name: 'admin_spending_plans_new', methods: ['GET', 'POST'])]
     public function new(Request $request, SpendingPlanRepository $spendingPlanRepository): Response
     {
-        $draftDto = $this->service->createDraftSpendingPlan();
+        $selectedMonth = $request->query->get('month');
+        $selectedMonthKey = is_string($selectedMonth) ? $selectedMonth : null;
+
+        $draftDto = $this->service->createDraftSpendingPlan($selectedMonthKey);
         $spendingPlan = $draftDto->spendingPlan;
 
         $form = $this->createForm(AdminSpendingPlanType::class, $spendingPlan);
@@ -47,20 +52,19 @@ final class AdminSpendingPlanController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $result = $this->service->createSpendingPlan($spendingPlan, $spendingPlanRepository);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to create spending plan.');
+                $this->addFormErrorToSpendingPlanField($form, $result->errorMessage ?? 'Unable to create spending plan.');
+            } else {
+                $this->addFlash('success', 'Spending plan created.');
 
-                return $this->redirectToRoute('admin_spending_plans_index');
+                return $this->redirectToRoute('admin_spending_plans_index', [
+                    'month' => $spendingPlan->getDateFrom()->format('Y-m'),
+                ]);
             }
-
-            $this->addFlash('success', 'Spending plan created.');
-
-            return $this->redirectToRoute('admin_spending_plans_index', [
-                'month' => $spendingPlan->getDateFrom()->format('Y-m'),
-            ]);
         }
 
         return $this->render('admin/spending_plans/new.html.twig', [
             'form' => $form,
+            'selectedMonthKey' => $selectedMonthKey ?? $spendingPlan->getDateFrom()->format('Y-m'),
         ]);
     }
 
@@ -77,16 +81,14 @@ final class AdminSpendingPlanController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $result = $this->service->updateSpendingPlan($spendingPlan, $spendingPlanRepository);
             if (!$result->success) {
-                $this->addFlash('error', $result->errorMessage ?? 'Unable to update spending plan.');
+                $this->addFormErrorToSpendingPlanField($form, $result->errorMessage ?? 'Unable to update spending plan.');
+            } else {
+                $this->addFlash('success', 'Spending plan updated.');
 
-                return $this->redirectToRoute('admin_spending_plans_index');
+                return $this->redirectToRoute('admin_spending_plans_index', [
+                    'month' => $spendingPlan->getDateFrom()->format('Y-m'),
+                ]);
             }
-
-            $this->addFlash('success', 'Spending plan updated.');
-
-            return $this->redirectToRoute('admin_spending_plans_index', [
-                'month' => $spendingPlan->getDateFrom()->format('Y-m'),
-            ]);
         }
 
         return $this->render('admin/spending_plans/edit.html.twig', [
@@ -194,5 +196,35 @@ final class AdminSpendingPlanController extends AbstractController
         }
 
         return new JsonResponse(['success' => true]);
+    }
+
+    private function addFormErrorToSpendingPlanField(FormInterface $form, string $message): void
+    {
+        $normalized = mb_strtolower($message);
+        if (str_contains($normalized, 'date "to"')) {
+            $form->get('dateTo')->addError(new FormError($message));
+
+            return;
+        }
+
+        if (str_contains($normalized, 'weight')) {
+            $form->get('weight')->addError(new FormError($message));
+
+            return;
+        }
+
+        if (str_contains($normalized, 'limit')) {
+            $form->get('limitAmount')->addError(new FormError($message));
+
+            return;
+        }
+
+        if (str_contains($normalized, 'currency')) {
+            $form->get('currency')->addError(new FormError($message));
+
+            return;
+        }
+
+        $form->get('name')->addError(new FormError($message));
     }
 }

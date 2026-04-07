@@ -27,14 +27,15 @@
                             <td>{{ user.id }}</td>
                             <td>{{ user.username }}</td>
                             <td>{{ user.roles|join(', ') }}</td>
-                            <td>
+                            <td class="table-row-actions-cell">
                                 <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_users_edit', {id: user.id}) }}">{{ 'common.edit'|trans }}</a>
                                     <a class="btn btn-ghost" href="{{ path('admin_users_password', {id: user.id}) }}">{{ 'common.password'|trans }}</a>
-                                    <form method="post" action="{{ path('admin_users_delete', {id: user.id}) }}" style="display:inline;" onsubmit="return confirm('{{ 'admin.users.confirm_delete'|trans({'%username%': user.username})|e('js') }}');">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
-                                        <button type="submit" class="btn-danger">{{ 'common.delete'|trans }}</button>
-                                    </form>
+                                    {% include 'components/_row_actions_edit_delete.html.twig' with {
+                                        editHref: path('admin_users_edit', {id: user.id}),
+                                        deleteAction: path('admin_users_delete', {id: user.id}),
+                                        csrfToken: csrf_token('delete_user_' ~ user.id),
+                                        deleteConfirm: 'admin.users.confirm_delete'|trans({'%username%': user.username})
+                                    } %}
                                 </div>
                             </td>
                         </tr>

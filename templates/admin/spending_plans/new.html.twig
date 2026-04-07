@@ -19,7 +19,7 @@
             {{ form_row(form.note) }}
             <div class="actions">
                 <button type="submit">{{ 'common.create'|trans }}</button>
-                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">{{ 'common.back'|trans }}</a>
+                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index', {month: selectedMonthKey}) }}">{{ 'common.back'|trans }}</a>
             </div>
         {{ form_end(form) }}
     </main>
