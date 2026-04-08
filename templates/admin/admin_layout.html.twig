@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+{% trans_default_domain 'messages' %}
+
+{% block body %}
+    {% set adminMenu = admin_menu_data() %}
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <nav class="admin-nav">
+                <div class="admin-nav-header">
+                    <a href="{{ path('admin_dashboard') }}" class="admin-nav-brand">{{ 'nav.admin'|trans }}</a>
+                </div>
+                <ul class="admin-nav-menu">
+                    <li class="admin-nav-item">
+                        <a href="{{ path('admin_users_index') }}" class="admin-nav-link {{ app.request.attributes.get('_route') starts with 'admin_users' ? 'is-active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <line x1="19" y1="8" x2="19" y2="14"></line>
+                                <line x1="22" y1="11" x2="16" y2="11"></line>
+                            </svg>
+                            <span>{{ 'admin.nav.users'|trans }}</span>
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a href="{{ path('admin_telegram_pending') }}" class="admin-nav-link {{ app.request.attributes.get('_route') starts with 'admin_telegram' ? 'is-active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>{{ 'admin.nav.telegram'|trans }}</span>
+                            {% if adminMenu.pending_telegram_count > 0 %}
+                                <span class="admin-nav-badge">{{ adminMenu.pending_telegram_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a href="{{ path('admin_spending_plans_index') }}" class="admin-nav-link {{ app.request.attributes.get('_route') starts with 'admin_spending_plans' ? 'is-active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                            <span>{{ 'admin.nav.spending_plans'|trans }}</span>
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a href="{{ path('admin_tech_tasks_index') }}" class="admin-nav-link {{ app.request.attributes.get('_route') starts with 'admin_tech_tasks' ? 'is-active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 11 12 14 22 4"></polyline>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                            <span>{{ 'admin.nav.tech_tasks'|trans }}</span>
+                        </a>
+                    </li>
+                </ul>
+                <div class="admin-nav-footer">
+                    <a href="{{ path('web_home') }}" class="admin-nav-back">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        <span>{{ 'admin.nav.back_to_site'|trans }}</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+        <main class="admin-content">
+            {% for label, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="flash flash-{{ label }} reveal">
+                        <strong>{{ ('flash.' ~ label)|trans }}</strong> {{ message|trans }}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+            {% block admin_body %}{% endblock %}
+        </main>
+    </div>
+{% endblock %}
