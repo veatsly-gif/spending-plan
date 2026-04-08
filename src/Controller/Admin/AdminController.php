@@ -9,6 +9,7 @@ use App\Repository\TelegramUserRepository;
 use App\Service\Controller\Admin\AdminDashboardControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -24,13 +25,9 @@ final class AdminController extends AbstractController
     public function __invoke(
         TelegramUserRepository $telegramUserRepository,
         SpendingPlanRepository $spendingPlanRepository,
-    ): Response
+    ): RedirectResponse
     {
-        $dto = $this->service->buildViewData(
-            $telegramUserRepository,
-            $spendingPlanRepository
-        );
-
-        return $this->render('admin/dashboard.html.twig', $dto->toArray());
+        // Redirect to spending plans as the default admin page
+        return $this->redirectToRoute('admin_spending_plans_index');
     }
 }

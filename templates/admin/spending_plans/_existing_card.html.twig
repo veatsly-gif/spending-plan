@@ -1,24 +1,78 @@
 {% trans_default_domain 'messages' %}
 
-<article class="sp-card existing-card" data-existing-plan-id="{{ plan.id }}">
+<article class="sp-card existing-card compact-card" data-existing-plan-id="{{ plan.id }}">
     <header class="sp-card-head">
+        <div class="card-title">
         <h3>{{ plan.name }}</h3>
-        <span class="badge">{{ ('plan_type.' ~ plan.planType)|trans }}</span>
+            <span class="badge small-badge">{{ ('plan_type.' ~ plan.planType)|trans }}</span>
+    </div>
+        <div class="card-actions">
+            {% include 'components/_row_actions_edit_delete.html.twig' with {
+                editHref: path('admin_spending_plans_edit', {id: plan.id}),
+                deleteAction: path('admin_spending_plans_delete', {id: plan.id}),
+                csrfToken: csrf_token('delete_spending_plan_' ~ plan.id),
+                deleteConfirm: 'admin.spending_plans.confirm_delete'|trans({'%name%': plan.name})
+            } %}
+        </div>
     </header>
-    <p class="sp-meta">
-        {{ plan.dateFrom|date('Y-m-d') }} - {{ plan.dateTo|date('Y-m-d') }}
-        · {{ 'common.weight'|trans({'%value%': plan.weight}) }}
-    </p>
-    <p class="sp-limit">{{ plan.limitAmount }} {{ plan.currency.code }}</p>
-    {% if plan.note %}
-        <p>{{ plan.note }}</p>
-    {% endif %}
-    <div class="actions">
-        {% include 'components/_row_actions_edit_delete.html.twig' with {
-            editHref: path('admin_spending_plans_edit', {id: plan.id}),
-            deleteAction: path('admin_spending_plans_delete', {id: plan.id}),
-            csrfToken: csrf_token('delete_spending_plan_' ~ plan.id),
-            deleteConfirm: 'admin.spending_plans.confirm_delete'|trans({'%name%': plan.name})
-        } %}
+    <div class="card-content">
+        <div class="card-meta">
+            <span>{{ plan.dateFrom|date('Y-m-d') }} - {{ plan.dateTo|date('Y-m-d') }}</span>
+            <span>·</span>
+            <span>{{ 'common.weight'|trans({'%value%': plan.weight}) }}</span>
+            {% if plan.isSystem %}
+                <span>·</span>
+                <span class="system-badge">System</span>
+            {% endif %}
+        </div>
+        <div class="card-details">
+            <div class="limit-amount">
+                <strong>{{ plan.limitAmount }} {{ plan.currency.code }}</strong>
+            </div>
+            {% if plan.note %}
+                <div class="note">
+                    {{ plan.note }}
+                </div>
+            {% endif %}
+        </div>
     </div>
 </article>
+
+<style>
+    .existing-card .card-actions .actions {
+        gap: 4px;
+    }
+
+    .existing-card .card-actions .btn {
+        padding: 4px 8px;
+        font-size: 0.85rem;
+        min-height: 28px;
+    }
+
+    .system-badge {
+        display: inline-block;
+        background: #e8f4ff;
+        color: #0066cc;
+        font-size: 0.75rem;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .card-details {
+        margin-top: 6px;
+    }
+
+    .limit-amount {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--accent-strong);
+    }
+
+    .note {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-top: 4px;
+        font-style: italic;
+    }
+</style>

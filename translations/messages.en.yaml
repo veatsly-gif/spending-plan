@@ -219,6 +219,12 @@ telegram:
     tab_spends: "See spends"
 
 admin:
+  nav:
+    users: "Users"
+    telegram: "Telegram"
+    spending_plans: "Spending Plans"
+    tech_tasks: "Tech Tasks"
+    back_to_site: "Back to Site"
   dashboard:
     title: "Admin"
     kicker: "Administration"

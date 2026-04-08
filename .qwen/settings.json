@@ -5,7 +5,10 @@
       "Bash(php *)",
       "Bash(make *)",
       "Bash(docker compose *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(ls *)",
+      "Bash(tail *)",
+      "Bash(find *)"
     ]
   },
   "$version": 3

@@ -9,6 +9,9 @@
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}?v=20260407-3">
         <link rel="stylesheet" href="{{ asset('styles/dark-theme.css') }}?v=20260407-2">
+        {% if app.request.attributes.get('_route') starts with 'admin_' %}
+            <link rel="stylesheet" href="{{ asset('styles/admin.css') }}?v=20260407-1">
+        {% endif %}
         {% if app.environment == 'prod' %}
             <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon.ico') }}?v=20260407-1">
         {% else %}

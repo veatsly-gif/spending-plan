@@ -1,21 +1,75 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.users.new_title'|trans }}{% endblock %}
 
-{% block body %}
-    <main class="panel reveal" style="max-width: 620px; margin-inline: auto;">
+{% block admin_body %}
+    <main class="panel reveal">
+        <div class="panel-head-inline">
+            <div>
         <span class="kicker">{{ 'admin.users.management_kicker'|trans }}</span>
         <h1>{{ 'admin.users.new_heading'|trans }}</h1>
-        {{ form_start(form) }}
-            {{ form_row(form.username) }}
-            {{ form_row(form.roles) }}
-            {{ form_row(form.plainPassword.first) }}
-            {{ form_row(form.plainPassword.second) }}
+            </div>
             <div class="actions">
-                <button type="submit">{{ 'common.create'|trans }}</button>
                 <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">{{ 'common.back'|trans }}</a>
+            </div>
+        </div>
+
+        {{ form_start(form, {attr: {class: 'compact-form'}}) }}
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.username) }}
+                </div>
+                <div class="form-col">
+                    {{ form_row(form.roles) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.plainPassword.first) }}
+                </div>
+                <div class="form-col">
+                    {{ form_row(form.plainPassword.second) }}
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn">{{ 'common.create'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('admin_users_index') }}">{{ 'common.cancel'|trans }}</a>
             </div>
         {{ form_end(form) }}
     </main>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .compact-form .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .compact-form input,
+        .compact-form select {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .compact-form .actions {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        @media (max-width: 768px) {
+            .compact-form .form-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+        }
+    </style>
 {% endblock %}

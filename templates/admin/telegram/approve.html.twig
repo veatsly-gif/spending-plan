@@ -1,9 +1,9 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.telegram.approve_title'|trans }}{% endblock %}
 
-{% block body %}
+{% block admin_body %}
     <main class="panel reveal" style="max-width: 680px; margin-inline: auto;">
         <span class="kicker">{{ 'admin.telegram.approval_kicker'|trans }}</span>
         <h1>{{ 'admin.telegram.approve_heading'|trans }}</h1>

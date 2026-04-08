@@ -1,23 +1,32 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.telegram.pending_title'|trans }}{% endblock %}
 
-{% block body %}
+{% block admin_body %}
     <main class="panel reveal">
+        <div class="panel-head-inline">
+            <div>
         <span class="kicker">{{ 'admin.telegram.kicker'|trans }}</span>
         <h1>{{ 'admin.telegram.pending_heading'|trans }}</h1>
+            </div>
+            {% if telegramUsers|length > 0 %}
+                                <div class="actions">
+                    <span class="badge">{{ telegramUsers|length }} {{ 'admin.telegram.pending_requests'|trans }}</span>
+                                </div>
+            {% endif %}
+        </div>
         <p>{{ 'admin.telegram.pending_description'|trans }}</p>
 
         <section class="table-wrap reveal delay">
-            <table>
+            <table class="compact-table">
                 <thead>
                     <tr>
-                        <th>{{ 'common.id'|trans }}</th>
-                        <th>{{ 'admin.telegram.telegram_id'|trans }}</th>
+                        <th width="60">{{ 'common.id'|trans }}</th>
+                        <th width="120">{{ 'admin.telegram.telegram_id'|trans }}</th>
                         <th>{{ 'common.name'|trans }}</th>
-                        <th>{{ 'admin.telegram.requested_at'|trans }}</th>
-                        <th>{{ 'common.actions'|trans }}</th>
+                        <th width="140">{{ 'admin.telegram.requested_at'|trans }}</th>
+                        <th width="320">{{ 'common.actions'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,12 +37,12 @@
                             <td>{{ tgUser.firstName }} {{ tgUser.lastName ?? '' }}</td>
                             <td>{{ tgUser.createdAt|date('Y-m-d H:i') }}</td>
                             <td>
-                                <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}">{{ 'admin.telegram.match_existing'|trans }}</a>
-                                    <a class="btn" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}">{{ 'admin.telegram.create_and_approve'|trans }}</a>
+                                <div class="actions compact-actions">
+                                    <a class="btn btn-ghost btn-small" href="{{ path('admin_telegram_approve', {id: tgUser.id}) }}" title="{{ 'admin.telegram.match_existing'|trans }}">👤</a>
+                                    <a class="btn btn-small" href="{{ path('admin_telegram_create_user', {id: tgUser.id}) }}" title="{{ 'admin.telegram.create_and_approve'|trans }}">✓</a>
                                     <form method="post" action="{{ path('admin_telegram_reject', {id: tgUser.id}) }}" onsubmit="return confirm('{{ 'admin.telegram.confirm_reject'|trans|e('js') }}');">
                                         <input type="hidden" name="_token" value="{{ csrf_token('reject_telegram_' ~ tgUser.id) }}">
-                                        <button class="btn btn-danger" type="submit">{{ 'common.reject'|trans }}</button>
+                                        <button class="btn btn-danger btn-small" type="submit" title="{{ 'common.reject'|trans }}">✗</button>
                                     </form>
                                 </div>
                             </td>
@@ -41,7 +50,9 @@
                     {% else %}
                         <tr>
                             <td colspan="5">
-                                <div class="empty"><strong>{{ 'admin.telegram.no_pending'|trans }}</strong></div>
+                                <div class="empty">
+                                    <strong>{{ 'admin.telegram.no_pending'|trans }}</strong>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -49,4 +60,34 @@
             </table>
         </section>
     </main>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .compact-table th,
+        .compact-table td {
+            padding: 6px 8px;
+            font-size: 0.9rem;
+        }
+
+        .compact-table th {
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        .compact-actions {
+            gap: 4px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.85rem;
+            min-height: 28px;
+        }
+
+        .table-wrap {
+            margin-top: 16px;
+        }
+    </style>
 {% endblock %}

@@ -1,26 +1,128 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.spending_plans.edit_title'|trans }}{% endblock %}
 
-{% block body %}
-    <main class="panel reveal" style="max-width: 760px; margin-inline: auto;">
+{% block admin_body %}
+    <main class="panel reveal">
+        <div class="panel-head-inline">
+            <div>
         <span class="kicker">{{ 'admin.spending_plans.kicker'|trans }}</span>
         <h1>{{ 'admin.spending_plans.edit_heading'|trans({'%name%': spendingPlan.name}) }}</h1>
-        {{ form_start(form) }}
-            {{ form_row(form.name) }}
-            {{ form_row(form.planType) }}
-            {{ form_row(form.dateFrom) }}
-            {{ form_row(form.dateTo) }}
-            {{ form_row(form.limitAmount) }}
-            {{ form_row(form.currency) }}
-            {{ form_row(form.weight) }}
-            {{ form_row(form.isSystem) }}
-            {{ form_row(form.note) }}
+            </div>
             <div class="actions">
-                <button type="submit">{{ 'common.save'|trans }}</button>
                 <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">{{ 'common.back'|trans }}</a>
+            </div>
+        </div>
+
+        {{ form_start(form, {attr: {class: 'compact-form'}}) }}
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.name) }}
+                </div>
+                <div class="form-col">
+                    {{ form_row(form.planType) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.dateFrom) }}
+                </div>
+                <div class="form-col">
+                    {{ form_row(form.dateTo) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-col form-col-narrow">
+                    {{ form_row(form.limitAmount) }}
+                </div>
+                <div class="form-col form-col-narrow">
+                    {{ form_row(form.currency) }}
+                </div>
+                <div class="form-col form-col-narrow">
+                    {{ form_row(form.weight) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.isSystem) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-col">
+                    {{ form_row(form.note) }}
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn">{{ 'common.save'|trans }}</button>
+                <a class="btn btn-ghost" href="{{ path('admin_spending_plans_index') }}">{{ 'common.cancel'|trans }}</a>
             </div>
         {{ form_end(form) }}
     </main>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .compact-form .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .compact-form .form-col-narrow {
+            min-width: 120px;
+        }
+
+        .compact-form input:not([type="checkbox"]),
+        .compact-form select,
+        .compact-form textarea {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .compact-form input[type="number"] {
+            max-width: 140px;
+        }
+
+        .compact-form .form-col:has(input[type="checkbox"]) {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .compact-form .form-col:has(input[type="checkbox"]) label {
+            margin-bottom: 0;
+            order: 2;
+        }
+
+        .compact-form .form-col:has(input[type="checkbox"]) input[type="checkbox"] {
+            width: auto;
+            order: 1;
+        }
+
+        .compact-form .actions {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        @media (max-width: 768px) {
+            .compact-form .form-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .compact-form input[type="number"] {
+                max-width: 100%;
+            }
+        }
+    </style>
 {% endblock %}

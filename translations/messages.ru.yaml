@@ -219,6 +219,12 @@ telegram:
     tab_spends: "Смотреть траты"
 
 admin:
+  nav:
+    users: "Пользователи"
+    telegram: "Telegram"
+    spending_plans: "Планы расходов"
+    tech_tasks: "Тех задачи"
+    back_to_site: "Назад на сайт"
   dashboard:
     title: "Админ"
     kicker: "Администрирование"

@@ -1,24 +1,28 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.users.index_title'|trans }}{% endblock %}
 
-{% block body %}
+{% block admin_body %}
     <main class="panel reveal">
-        <span class="kicker">{{ 'admin.users.kicker'|trans }}</span>
-        <h1>{{ 'admin.users.heading'|trans }}</h1>
-        <div class="actions">
-            <a class="btn" href="{{ path('admin_users_new') }}">{{ 'admin.users.create_user'|trans }}</a>
-        </div>
+        <div class="panel-head-inline">
+            <div>
+                <span class="kicker">{{ 'admin.users.kicker'|trans }}</span>
+                <h1>{{ 'admin.users.heading'|trans }}</h1>
+            </div>
+                                <div class="actions">
+                <a class="btn" href="{{ path('admin_users_new') }}">{{ 'admin.users.create_user'|trans }}</a>
+                                </div>
+                                </div>
 
         <section class="table-wrap reveal delay">
-            <table>
+            <table class="compact-table">
                 <thead>
                     <tr>
-                        <th>{{ 'common.id'|trans }}</th>
+                        <th width="60">{{ 'common.id'|trans }}</th>
                         <th>{{ 'common.username'|trans }}</th>
-                        <th>{{ 'common.roles'|trans }}</th>
-                        <th>{{ 'common.actions'|trans }}</th>
+                        <th width="180">{{ 'common.roles'|trans }}</th>
+                        <th width="220">{{ 'common.actions'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -26,16 +30,15 @@
                         <tr>
                             <td>{{ user.id }}</td>
                             <td>{{ user.username }}</td>
-                            <td>{{ user.roles|join(', ') }}</td>
+                            <td><span class="roles-badge">{{ user.roles|join(', ') }}</span></td>
                             <td class="table-row-actions-cell">
-                                <div class="actions">
-                                    <a class="btn btn-ghost" href="{{ path('admin_users_password', {id: user.id}) }}">{{ 'common.password'|trans }}</a>
-                                    {% include 'components/_row_actions_edit_delete.html.twig' with {
-                                        editHref: path('admin_users_edit', {id: user.id}),
-                                        deleteAction: path('admin_users_delete', {id: user.id}),
-                                        csrfToken: csrf_token('delete_user_' ~ user.id),
-                                        deleteConfirm: 'admin.users.confirm_delete'|trans({'%username%': user.username})
-                                    } %}
+                                <div class="actions compact-actions">
+                                    <a class="btn btn-ghost btn-small" href="{{ path('admin_users_password', {id: user.id}) }}" title="{{ 'common.password'|trans }}">🔑</a>
+                                    <a class="btn btn-ghost btn-small" href="{{ path('admin_users_edit', {id: user.id}) }}" title="{{ 'common.edit'|trans }}">✏️</a>
+                                    <form action="{{ path('admin_users_delete', {id: user.id}) }}" method="post" onsubmit="return confirm('{{ 'admin.users.confirm_delete'|trans({'%username%': user.username})|escape('js') }}')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
+                                        <button type="submit" class="btn btn-ghost btn-small btn-danger" title="{{ 'common.delete'|trans }}">🗑</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -52,4 +55,46 @@
             </table>
         </section>
     </main>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .compact-table th,
+        .compact-table td {
+            padding: 6px 8px;
+            font-size: 0.9rem;
+        }
+
+        .compact-table th {
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        .roles-badge {
+            display: inline-block;
+            background: var(--surface-soft);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .compact-actions {
+            gap: 4px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.85rem;
+            min-height: 28px;
+        }
+
+        .table-wrap {
+            margin-top: 16px;
+        }
+    </style>
 {% endblock %}

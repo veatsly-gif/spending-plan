@@ -1,9 +1,9 @@
-{% extends 'base.html.twig' %}
+{% extends 'admin/admin_layout.html.twig' %}
 {% trans_default_domain 'messages' %}
 
 {% block title %}{{ 'admin.tech_tasks.title'|trans }}{% endblock %}
 
-{% block body %}
+{% block admin_body %}
     <main class="panel reveal">
         <span class="kicker">{{ 'admin.tech_tasks.kicker'|trans }}</span>
         <h1>{{ 'admin.tech_tasks.heading'|trans }}</h1>
