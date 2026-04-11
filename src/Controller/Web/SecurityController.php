@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Web;
 
+use App\Service\Frontend\FrontendModeResolver;
 use App\Service\Controller\Web\SecurityControllerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,12 +15,21 @@ final class SecurityController extends AbstractController
 {
     public function __construct(
         private readonly SecurityControllerService $service,
+        private readonly FrontendModeResolver $frontendModeResolver,
     ) {
     }
 
     #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
+        $isReactMode = $this->frontendModeResolver->isReactMode();
+
+        if ($isReactMode) {
+            return $this->redirectToRoute('web_spa_entry', [
+                'path' => null !== $this->getUser() ? 'dashboard' : 'login',
+            ]);
+        }
+
         $dto = $this->service->buildLoginViewData(
             $authenticationUtils,
             null !== $this->getUser()

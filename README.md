@@ -8,6 +8,72 @@ Personal finance system based on Symfony + PostgreSQL, running in Docker.
 - Symfony 8
 - Nginx
 - PostgreSQL 16
+- Optional frontend mode: React (Vite)
+
+## Frontend Modes
+
+This project supports two frontend modes controlled by `.env`:
+
+- `APP_FRONTEND_MODE=twig` (default): classic Symfony Twig pages.
+- `APP_FRONTEND_MODE=react`: React SPA for migrated flows (`/app/login`, `/app/dashboard`).
+
+Related `.env` keys:
+
+- `APP_FRONTEND_MODE`
+- `APP_FRONTEND_REACT_DEV_SERVER_URL` (default `http://localhost:5173`)
+- `APP_FRONTEND_API_BASE_URL` (default `/api`)
+- `APP_API_TOKEN_TTL` (default `86400` seconds)
+
+React auth uses API token flow:
+
+- `POST /api/login` returns bearer token
+- `GET /api/login/stub` validates token
+- `GET/POST /api/preferences` reads/saves user language/theme
+- Dashboard endpoints require `Authorization: Bearer <token>`
+
+When `APP_FRONTEND_MODE=react`, `/login` and `/dashboard` redirect to SPA routes.
+
+Reference: `docs/frontend-migration.md`
+
+## Frontend Architecture (React Mode)
+
+React frontend is organized by reusable layers:
+
+```text
+frontend/src/
+├── components/
+│   ├── layout/
+│   │   └── AppHeader.jsx
+│   └── ui/
+│       ├── Alert.jsx
+│       ├── Button.jsx
+│       └── Input.jsx
+├── hooks/
+│   ├── useAuth.js
+│   ├── useDashboard.js
+│   ├── useI18n.jsx
+│   └── usePreferences.js
+├── i18n/
+│   └── messages.js
+├── pages/
+│   ├── LoginPage.jsx
+│   └── StubPage.jsx
+├── schemas/
+│   └── authSchema.js
+└── App.jsx
+```
+
+Rules for new frontend code:
+
+- `components/ui/*`: atomic, presentational UI-kit components with no business logic.
+- `hooks/*`: business logic and API integration (`useAuth`, `useDashboard`).
+- `hooks/useI18n.jsx` + `i18n/messages.js`: React-native localization (instant UI switch, no redirect to Symfony locale routes).
+- `hooks/usePreferences.js`: native theme switcher behavior with backend sync (`/theme/{theme}`).
+- `pages/*`: route-level page composition; pages consume hooks/components.
+- `schemas/*`: validation schemas (Zod), used by forms and hooks.
+- `App.jsx`: lightweight page router only, no heavy logic.
+
+This structure replaces Twig-oriented frontend patterns for migrated flows and keeps API/token communication between frontend and backend.
 
 ## Reusable UI Components
 
@@ -103,6 +169,12 @@ docker compose -f docker-compose.yaml run --rm php composer install
 docker compose -f docker-compose.yaml run --rm php php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
+Run with React dev server as well:
+
+```bash
+docker compose --profile test --profile frontend -f docker-compose.yaml up -d --build
+```
+
 The `test` profile starts `postgres_test` (needed for `make test`). Omit `--profile test` if you only need the main database.
 
 ## Production (Docker on a VPS)
@@ -153,7 +225,8 @@ Open:
 
 - Web: http://localhost:8188/
 - API health: http://localhost:8188/api/health
-- Login: http://localhost:8188/login
+- Login (React mode): http://localhost:8188/app/login
+- Login (legacy route, redirects in React mode): http://localhost:8188/login
 
 Default users after migration:
 

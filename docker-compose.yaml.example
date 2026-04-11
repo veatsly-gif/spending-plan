@@ -35,6 +35,24 @@ services:
       - ./:/var/www/app:ro
       - ./docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
 
+  node:
+    profiles:
+      - frontend
+    image: node:22-alpine
+    container_name: spending_plan_node
+    working_dir: /var/www/app/frontend
+    volumes:
+      - ./:/var/www/app
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8188}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    stdin_open: true
+    tty: true
+
   postgres:
     image: postgres:16-alpine
     container_name: spending_plan_postgres

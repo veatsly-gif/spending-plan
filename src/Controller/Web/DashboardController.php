@@ -11,6 +11,7 @@ use App\Form\Web\DashboardSpendType;
 use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Service\Controller\Web\DashboardControllerService;
+use App\Service\Frontend\FrontendModeResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
@@ -29,12 +30,17 @@ final class DashboardController extends AbstractController
         private readonly IncomeRepository $incomeRepository,
         private readonly SpendRepository $spendRepository,
         private readonly TranslatorInterface $translator,
+        private readonly FrontendModeResolver $frontendModeResolver,
     ) {
     }
 
     #[Route('/dashboard', name: 'app_dashboard', methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
+        if ($this->frontendModeResolver->isReactMode()) {
+            return $this->redirectToRoute('web_spa_entry', ['path' => 'dashboard']);
+        }
+
         $user = $this->getUser();
         if (!$user instanceof User) {
             throw $this->createAccessDeniedException('User is not authenticated.');

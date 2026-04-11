@@ -18,6 +18,13 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: app_user_provider
+            entry_point: App\Security\Token\ApiTokenAuthenticator
+            custom_authenticators:
+                - App\Security\Token\ApiTokenAuthenticator
         main:
             lazy: true
             provider: app_user_provider
@@ -34,7 +41,13 @@ security:
                 target: app_login
 
     access_control:
+        - { path: ^/app, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/telegram/webhook, roles: PUBLIC_ACCESS }
+        - { path: ^/api/preferences, roles: ROLE_USER }
+        - { path: ^/api/dashboard, roles: ROLE_USER }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/dashboard, roles: ROLE_USER }
 

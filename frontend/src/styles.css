@@ -1,0 +1,189 @@
+.react-portal {
+  --line: #e4e7ee;
+  --ink: #20242f;
+  --muted: #67718a;
+  --brand: #1f7af0;
+  --danger: #de3d57;
+  --success: #1f9d55;
+}
+
+.react-portal * {
+  box-sizing: border-box;
+}
+
+.react-portal .sp-react-header {
+  margin-bottom: 6px;
+}
+
+.react-portal .sp-native-switchers {
+  gap: 10px;
+}
+
+.react-portal .sp-native-label {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.react-portal .sp-header-select {
+  width: 84px;
+  min-width: 84px;
+}
+
+.react-portal .sp-theme-switch {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.react-portal .sp-theme-switch .form-check-input {
+  margin: 0;
+  float: none;
+  cursor: pointer;
+}
+
+.react-portal .sp-theme-switch .form-check-label {
+  margin: 0;
+}
+
+.react-portal .login-page {
+  min-height: calc(100vh - 130px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.react-portal .login-card {
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, #ffffff, #fafbff);
+  border-radius: 20px;
+  box-shadow: 0 18px 40px rgba(31, 45, 72, 0.08);
+}
+
+.react-portal .sp-login-kicker {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.react-portal .login-card h1 {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.react-portal .password-toggle {
+  min-width: 80px;
+}
+
+.react-portal .sp-login-form .form-control,
+.react-portal .sp-login-form .btn {
+  border-radius: 0.75rem;
+}
+
+.react-portal .sp-login-form .input-group .form-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.react-portal .sp-login-form .input-group .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.react-portal .sp-login-form .form-control:focus {
+  border-color: rgba(33, 114, 255, 0.4);
+  box-shadow: 0 0 0 0.22rem rgba(33, 114, 255, 0.16);
+}
+
+.react-portal .sp-login-form .form-control.is-invalid,
+.react-portal .sp-login-form .form-control.is-invalid:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.22rem rgba(220, 53, 69, 0.16);
+}
+
+.react-portal .sp-invalid-feedback {
+  min-height: 20px;
+  margin-top: 6px;
+  visibility: hidden;
+  color: #dc3545;
+}
+
+.react-portal .sp-invalid-feedback.is-visible {
+  visibility: visible;
+}
+
+.react-portal .alert {
+  border-radius: 10px;
+}
+
+.react-portal .sp-status-slot {
+  min-height: 104px;
+}
+
+.react-portal .sp-status-placeholder {
+  min-height: 100%;
+}
+
+.react-portal .stub-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: #f8faff;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.react-portal .stub-box span {
+  color: var(--muted);
+}
+
+.react-portal .logout-form {
+  margin-bottom: 10px;
+}
+
+.react-portal .react-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.react-portal .react-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.react-portal .react-checkbox-row input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}
+
+.react-portal .react-checkbox-row label {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .react-portal .nav-shell {
+    flex-wrap: wrap;
+  }
+
+  .react-portal .sp-native-switchers {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .react-portal .sp-theme-switch {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .react-portal .login-card {
+    border-radius: 14px;
+  }
+
+  .react-portal .login-card h1 {
+    font-size: 26px;
+  }
+}

@@ -1,6 +1,9 @@
 up:
 	docker compose --profile test -f docker-compose.yaml up -d --build
 
+up-frontend:
+	docker compose --profile test --profile frontend -f docker-compose.yaml up -d --build
+
 down:
 	docker compose -f docker-compose.yaml down
 

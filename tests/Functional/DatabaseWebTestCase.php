@@ -80,6 +80,11 @@ abstract class DatabaseWebTestCase extends WebTestCase
         return [];
     }
 
+    protected function getFrontendModeForTest(): string
+    {
+        return 'twig';
+    }
+
     /**
      * @param list<class-string<DatabaseFixtureInterface>> $fixtures
      */
@@ -130,6 +135,7 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $testDatabaseUrl = getenv('TEST_DATABASE_URL') ?: getenv('DATABASE_URL') ?: $defaultTestDatabaseUrl;
         $defaultTestRedisDsn = 'redis://redis:6379/15';
         $testRedisDsn = getenv('TEST_REDIS_DSN') ?: $defaultTestRedisDsn;
+        $frontendMode = $this->getFrontendModeForTest();
 
         putenv('APP_ENV=test');
         putenv('APP_DEBUG=1');
@@ -141,6 +147,7 @@ abstract class DatabaseWebTestCase extends WebTestCase
         putenv('APP_SECRET='.((string) (getenv('APP_SECRET') ?: 'test-secret')));
         putenv('TELEGRAM_WEBHOOK_SECRET='.((string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret')));
         putenv('TELEGRAM_BOT_TOKEN='.((string) (getenv('TELEGRAM_BOT_TOKEN') ?: '')));
+        putenv('APP_FRONTEND_MODE='.$frontendMode);
         $_ENV['APP_ENV'] = 'test';
         $_ENV['APP_DEBUG'] = '1';
         $_ENV['TEST_DATABASE_URL'] = $testDatabaseUrl;
@@ -151,6 +158,7 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $_ENV['APP_SECRET'] = (string) (getenv('APP_SECRET') ?: 'test-secret');
         $_ENV['TELEGRAM_WEBHOOK_SECRET'] = (string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret');
         $_ENV['TELEGRAM_BOT_TOKEN'] = (string) (getenv('TELEGRAM_BOT_TOKEN') ?: '');
+        $_ENV['APP_FRONTEND_MODE'] = $frontendMode;
         $_SERVER['APP_ENV'] = 'test';
         $_SERVER['APP_DEBUG'] = '1';
         $_SERVER['TEST_DATABASE_URL'] = $testDatabaseUrl;
@@ -161,6 +169,7 @@ abstract class DatabaseWebTestCase extends WebTestCase
         $_SERVER['APP_SECRET'] = (string) (getenv('APP_SECRET') ?: 'test-secret');
         $_SERVER['TELEGRAM_WEBHOOK_SECRET'] = (string) (getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'test-webhook-secret');
         $_SERVER['TELEGRAM_BOT_TOKEN'] = (string) (getenv('TELEGRAM_BOT_TOKEN') ?: '');
+        $_SERVER['APP_FRONTEND_MODE'] = $frontendMode;
     }
 
     private function clearRedisState(): void
