@@ -36,10 +36,10 @@ final class SpendingPlanDisplaySorterTest extends TestCase
             [
                 "Dima's birthday",
                 'Пятничка',
-                'Выхи 4-5 апреля',
-                'Будни 6-10 апреля',
                 'Regular spends',
                 'Planned spends',
+                'Выхи 4-5 апреля',
+                'Будни 6-10 апреля',
                 'Будни 1-2 апреля',
             ],
             array_map(static fn (SpendingPlan $p) => $p->getName(), $sorted)

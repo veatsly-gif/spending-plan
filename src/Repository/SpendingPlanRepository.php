@@ -141,8 +141,8 @@ class SpendingPlanRepository extends ServiceEntityRepository
 
     /**
      * Plans overlapping the calendar month of {@see $date} (same set as admin spending-plan list for that month).
-     * Order follows {@see SpendingPlanDisplaySorter}: active boosted plans, active date-based plans,
-     * then regular/planned, future date-based and past date-based.
+     * Order follows {@see SpendingPlanDisplaySorter}: current (reference-day) plans first, then active
+     * boosted plans, active date-based plans, regular/planned, future date-based and past date-based.
      *
      * @return list<SpendingPlan>
      */

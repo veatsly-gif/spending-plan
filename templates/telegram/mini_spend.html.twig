@@ -667,12 +667,10 @@
                                                 <span class="spend-stream-title">
                                                     {{ group.name }}
                                                     {% if group.current %}
-                                                        <span class="badge">{{ 'spends.stream.current_plan'|trans }}</span>
+                                                        <span class="badge">{{ 'spends.stream.current_plan'|trans }}</span> :
                                                     {% endif %}
-                                                </span>
-                                                <span class="spend-stream-meta">
-                                                    <span>{{ 'spends.stream.spent'|trans }}: <strong>{{ group.totalAmountLabel }}</strong></span>
-                                                    <span>{{ 'spends.stream.planned'|trans }}: <strong>{{ group.plannedAmountLabel }}</strong></span>
+                                                    <span><strong>{{ group.totalAmountLabel }}</strong></span> /
+                                                    <span><strong>{{ group.plannedAmountLabel }}</strong></span>
                                                 </span>
                                             </div>
                                             <span class="spend-stream-chevron" aria-hidden="true"></span>

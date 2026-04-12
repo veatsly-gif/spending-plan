@@ -33,7 +33,6 @@ login:
   username: "Имя пользователя"
   password: "Пароль"
   sign_in: "Войти"
-  seed_users: "Тестовые пользователи: <code>admin/admin</code> и <code>test/temp</code>"
 
 common:
   back: "Назад"
@@ -369,7 +368,6 @@ form:
 "Currency is required.": "Валюта обязательна."
 "Unable to convert now. Refresh rates first or uncheck conversion.": "Сейчас не удалось конвертировать. Сначала обновите курсы или отключите конвертацию."
 "Spending plan is required.": "План расходов обязателен."
-"Spend date must be inside selected spending plan period.": "Дата расхода должна быть в пределах выбранного плана расходов."
 "Username already exists.": "Имя пользователя уже существует."
 "Authorized user cannot be rejected from this list.": "Авторизованного пользователя нельзя отклонить из этого списка."
 "Suggestion not found.": "Предложение не найдено."

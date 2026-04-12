@@ -10,7 +10,8 @@ use App\Entity\SpendingPlan;
  * Shared ordering for spending-plan lists (admin month view, add-spend select).
  *
  * Rule set:
- * 1. Active boosted plans (weight > 1) first.
+ * 0. Plans whose date range covers the reference day ("current") before all others.
+ * 1. Active boosted plans (weight > 1) first among peers.
  * 2. Active date-based plans (weekday/weekend/custom) second.
  * 3. Then future date-based, regular, planned, past date-based.
  */
@@ -27,6 +28,12 @@ final class SpendingPlanDisplaySorter
         $day = ($referenceDate ?? new \DateTimeImmutable())->setTime(0, 0);
 
         usort($plans, static function (SpendingPlan $a, SpendingPlan $b) use ($day): int {
+            $aCurrent = self::isCurrent($a, $day);
+            $bCurrent = self::isCurrent($b, $day);
+            if ($aCurrent !== $bCurrent) {
+                return ((int) $bCurrent) <=> ((int) $aCurrent);
+            }
+
             $aRank = self::rank($a, $day);
             $bRank = self::rank($b, $day);
             if ($aRank !== $bRank) {

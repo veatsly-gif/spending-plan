@@ -33,7 +33,6 @@ login:
   username: "Username"
   password: "Password"
   sign_in: "Sign in"
-  seed_users: "Seed users: <code>admin/admin</code> and <code>test/temp</code>"
 
 common:
   back: "Back"
@@ -370,7 +369,6 @@ form:
 "Currency is required.": "Currency is required."
 "Unable to convert now. Refresh rates first or uncheck conversion.": "Unable to convert now. Refresh rates first or uncheck conversion."
 "Spending plan is required.": "Spending plan is required."
-"Spend date must be inside selected spending plan period.": "Spend date must be inside selected spending plan period."
 "Username already exists.": "Username already exists."
 "Authorized user cannot be rejected from this list.": "Authorized user cannot be rejected from this list."
 "Suggestion not found.": "Suggestion not found."

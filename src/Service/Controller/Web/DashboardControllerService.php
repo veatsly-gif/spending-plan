@@ -564,9 +564,6 @@ final class DashboardControllerService
         }
 
         $spendDate = $draft->getSpendDate()->setTime(0, 0);
-        if ($spendDate < $spendingPlan->getDateFrom() || $spendDate > $spendingPlan->getDateTo()) {
-            return new SpendCreateResultDto(false, 'Spend date must be inside selected spending plan period.');
-        }
 
         $spend = (new Spend())
             ->setUserAdded($user)

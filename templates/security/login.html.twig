@@ -25,8 +25,6 @@
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
                 <button type="submit">{{ 'login.sign_in'|trans }}</button>
             </form>
-
-            <p class="subtle">{{ 'login.seed_users'|trans|raw }}</p>
         </main>
     </div>
 {% endblock %}
