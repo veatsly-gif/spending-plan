@@ -46,6 +46,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/telegram/webhook, roles: PUBLIC_ACCESS }
+        - { path: ^/api/telegram/mini, roles: PUBLIC_ACCESS }
         - { path: ^/api/preferences, roles: ROLE_USER }
         - { path: ^/api/dashboard, roles: ROLE_USER }
         - { path: ^/admin, roles: ROLE_ADMIN }

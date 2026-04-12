@@ -646,6 +646,11 @@ final class DashboardControllerService
         return 'ROLE_INCOMER' === $role && in_array('ROLE_ADMIN', $roles, true);
     }
 
+    public function mapIncomeToItemDto(Income $income): DashboardIncomeItemDto
+    {
+        return $this->mapIncome($income);
+    }
+
     private function mapIncome(Income $income): DashboardIncomeItemDto
     {
         return new DashboardIncomeItemDto(
@@ -659,6 +664,11 @@ final class DashboardControllerService
             $income->getComment(),
             $this->dateTimeFormatter->format($income->getCreatedAt(), 'Y-m-d H:i')
         );
+    }
+
+    public function mapSpendToItemDto(Spend $spend): DashboardSpendItemDto
+    {
+        return $this->mapSpend($spend);
     }
 
     private function mapSpend(Spend $spend): DashboardSpendItemDto

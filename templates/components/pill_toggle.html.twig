@@ -1,6 +1,17 @@
 {#
  # Apple-style Pill Toggle Component
  #
+ # ⚠️  DEPRECATED: This Twig component is deprecated for new React-based pages.
+ # New React pages should use the <PillToggle> component from frontend/src/components/ui/PillToggle.jsx
+ #
+ # This component is still maintained for backward compatibility with:
+ # - Legacy Twig pages that haven't been migrated to React
+ #
+ # Migration Guide:
+ # 1. For React pages: import { PillToggle } from '../ui/PillToggle'
+ # 2. Use the same props: name, options, value, onChange, size, className
+ # 3. The React component uses Bootstrap button-group styling
+ #
  # A reusable two-state radio toggle with sliding pill indicator.
  # Mimics a physical toggle: recessed track, raised active label, smooth slide animation.
  #

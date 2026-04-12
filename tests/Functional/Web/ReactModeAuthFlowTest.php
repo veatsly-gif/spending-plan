@@ -17,11 +17,6 @@ final class ReactModeAuthFlowTest extends DatabaseWebTestCase
         return [BaseUsersFixture::class];
     }
 
-    protected function getFrontendModeForTest(): string
-    {
-        return 'react';
-    }
-
     public function testLoginPageRendersReactRootInReactMode(): void
     {
         $this->client->request('GET', '/login');

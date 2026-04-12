@@ -6,15 +6,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useDashboard } from '../hooks/useDashboard';
 import { useI18n } from '../hooks/useI18n';
 
-export function StubPage({ config }) {
+export function DashboardPage({ config }) {
   const { t } = useI18n();
   const effectiveConfig = useMemo(() => ({
     loginPath: config.loginPath || '/app/login',
     apiDashboardPath: config.apiDashboardPath || '/api/dashboard',
     apiCreateSpendPath: config.apiCreateSpendPath || '/api/dashboard/spends',
     apiCreateIncomePath: config.apiCreateIncomePath || '/api/dashboard/incomes',
-    spendsPath: config.spendsPath || '/dashboard/spends',
-    incomesPath: config.incomesPath || '/dashboard/incomes',
+    spendsPath: config.spendsPath || '/app/dashboard/spends',
+    incomesPath: config.incomesPath || '/app/dashboard/incomes',
   }), [config]);
 
   const { token, logout } = useAuth(effectiveConfig);

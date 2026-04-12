@@ -11,7 +11,6 @@ use App\Form\Web\DashboardSpendType;
 use App\Repository\IncomeRepository;
 use App\Repository\SpendRepository;
 use App\Service\Controller\Web\DashboardControllerService;
-use App\Service\Frontend\FrontendModeResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
@@ -30,64 +29,19 @@ final class DashboardController extends AbstractController
         private readonly IncomeRepository $incomeRepository,
         private readonly SpendRepository $spendRepository,
         private readonly TranslatorInterface $translator,
-        private readonly FrontendModeResolver $frontendModeResolver,
     ) {
     }
 
     #[Route('/dashboard', name: 'app_dashboard', methods: ['GET'])]
     public function __invoke(Request $request): Response
     {
-        if ($this->frontendModeResolver->isReactMode()) {
-            return $this->redirectToRoute('web_spa_entry', ['path' => 'dashboard']);
-        }
-
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            throw $this->createAccessDeniedException('User is not authenticated.');
-        }
-
-        $spendDraft = $this->service->createSpendDraft(new \DateTimeImmutable());
-        $spendForm = $this->createForm(DashboardSpendType::class, $spendDraft, [
-            'action' => $this->generateUrl('app_dashboard_spends_create'),
-            'spending_plan_choices' => $this->service->getSpendPlanChoicesForDate($spendDraft->getSpendDate()),
-        ]);
-
-        $incomeForm = null;
-        if ($this->isGranted('ROLE_INCOMER')) {
-            $incomeDraft = $this->service->createIncomeDraft();
-            $incomeForm = $this->createForm(DashboardIncomeType::class, $incomeDraft, [
-                'action' => $this->generateUrl('app_dashboard_incomes_create'),
-            ]);
-        }
-
-        $dto = $this->service->buildViewData($user, new \DateTimeImmutable());
-        $context = $dto->toArray();
-        $context['spendForm'] = $spendForm->createView();
-        if (null !== $incomeForm) {
-            $context['incomeForm'] = $incomeForm->createView();
-        }
-
-        return $this->render('dashboard/index.html.twig', $context);
+        return $this->redirectToSpa('dashboard', $request->query->all());
     }
 
     #[Route('/dashboard/incomes', name: 'app_dashboard_incomes', methods: ['GET'])]
     public function incomes(Request $request): Response
     {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            throw $this->createAccessDeniedException('User is not authenticated.');
-        }
-
-        $dto = $this->service->buildIncomeListViewData($request->query->all(), new \DateTimeImmutable());
-        $context = $dto->toArray();
-        if ($this->isGranted('ROLE_INCOMER')) {
-            $incomeDraft = $this->service->createIncomeDraft();
-            $context['incomeForm'] = $this->createForm(DashboardIncomeType::class, $incomeDraft, [
-                'action' => $this->generateUrl('app_dashboard_incomes_create'),
-            ])->createView();
-        }
-
-        return $this->render('dashboard/incomes.html.twig', $context);
+        return $this->redirectToSpa('dashboard/incomes', $request->query->all());
     }
 
     #[Route('/dashboard/incomes/create', name: 'app_dashboard_incomes_create', methods: ['POST'])]
@@ -148,6 +102,10 @@ final class DashboardController extends AbstractController
     #[Route('/dashboard/incomes/{id}/edit', name: 'app_dashboard_incomes_edit', methods: ['GET', 'POST'])]
     public function editIncome(int $id, Request $request): Response
     {
+        if ($request->isMethod('GET')) {
+            return $this->redirectToSpa('dashboard/incomes/'.$id.'/edit');
+        }
+
         if (!$this->isGranted('ROLE_INCOMER')) {
             throw $this->createAccessDeniedException('Income edit is allowed for incomer role only.');
         }
@@ -174,10 +132,7 @@ final class DashboardController extends AbstractController
             $form->get('amount')->addError(new FormError($result->errorMessage ?? 'income.unable_update'));
         }
 
-        return $this->render('dashboard/income_edit.html.twig', [
-            'form' => $form->createView(),
-            'income' => $income,
-        ]);
+        return $this->redirectToSpa('dashboard/incomes/'.$id.'/edit');
     }
 
     #[Route('/dashboard/incomes/{id}/delete', name: 'app_dashboard_incomes_delete', methods: ['POST'])]
@@ -208,14 +163,7 @@ final class DashboardController extends AbstractController
     #[Route('/dashboard/spends', name: 'app_dashboard_spends', methods: ['GET'])]
     public function spends(Request $request): Response
     {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            throw $this->createAccessDeniedException('User is not authenticated.');
-        }
-
-        $dto = $this->service->buildSpendListViewData($request->query->all(), new \DateTimeImmutable());
-
-        return $this->render('dashboard/spends.html.twig', $dto->toArray());
+        return $this->redirectToSpa('dashboard/spends', $request->query->all());
     }
 
     #[Route('/dashboard/spends/version', name: 'app_dashboard_spends_version', methods: ['GET'])]
@@ -325,6 +273,10 @@ final class DashboardController extends AbstractController
     #[Route('/dashboard/spends/{id}/edit', name: 'app_dashboard_spends_edit', methods: ['GET', 'POST'])]
     public function editSpend(int $id, Request $request): Response
     {
+        if ($request->isMethod('GET')) {
+            return $this->redirectToSpa('dashboard/spends/'.$id.'/edit');
+        }
+
         $spend = $this->spendRepository->find($id);
         if (!$spend instanceof \App\Entity\Spend) {
             throw $this->createNotFoundException('Spend not found.');
@@ -354,10 +306,7 @@ final class DashboardController extends AbstractController
             }
         }
 
-        return $this->render('dashboard/spend_edit.html.twig', [
-            'form' => $form->createView(),
-            'spend' => $spend,
-        ]);
+        return $this->redirectToSpa('dashboard/spends/'.$id.'/edit');
     }
 
     #[Route('/dashboard/spends/{id}/delete', name: 'app_dashboard_spends_delete', methods: ['POST'])]
@@ -379,6 +328,19 @@ final class DashboardController extends AbstractController
         }
 
         return $this->redirectToRoute('app_dashboard_spends');
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     */
+    private function redirectToSpa(string $path, array $query = []): Response
+    {
+        $url = $this->generateUrl('web_spa_entry', ['path' => $path]);
+        if ([] !== $query) {
+            $url .= '?'.http_build_query($query);
+        }
+
+        return $this->redirect($url);
     }
 
     private function collectFirstFormError(FormInterface $form): ?string

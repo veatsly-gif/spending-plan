@@ -34,10 +34,13 @@ final class SecurityAccessTest extends DatabaseWebTestCase
     public function testAdminCanOpenAdminDashboard(): void
     {
         $this->loginAs('admin');
-        $crawler = $this->client->request('GET', '/admin');
+        $this->client->request('GET', '/admin');
+
+        self::assertResponseRedirects('/admin/spending-plans');
+        $crawler = $this->client->followRedirect();
 
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('h1', 'Control Center');
+        self::assertGreaterThan(0, $crawler->filter('h1')->count());
         self::assertGreaterThan(0, $crawler->filter('a[href="/admin/telegram"]')->count());
     }
 

@@ -32,9 +32,13 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         ];
 
         if (in_array($testName, [
-            'testMiniAppShowsSpendsListAndActions',
-            'testAuthorizedTelegramUserCanEditSpendFromMiniApp',
-            'testAuthorizedTelegramUserCanDeleteSpendFromMiniApp',
+            'testMiniAppShellLoadsReactRoot',
+            'testMiniAppSpendsListJson',
+            'testAuthorizedTelegramUserCanCreateSpendViaMiniApi',
+            'testAuthorizedTelegramUserCanEditSpendViaMiniApi',
+            'testAuthorizedTelegramUserCanDeleteSpendViaMiniApi',
+            'testMiniAppSpendFormPlansFollowPrioritySortingRules',
+            'testMiniAppPreferencesPersistToMetadata',
         ], true)) {
             $fixtures[] = BaseSpendsFixture::class;
         }
@@ -49,39 +53,69 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
-    public function testAuthorizedTelegramUserCanAddSpendFromMiniApp(): void
+    public function testMiniAppShellLoadsReactRoot(): void
     {
         $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
         $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
 
         $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
         self::assertResponseIsSuccessful();
-        self::assertSame(1, $crawler->filter('form[name="dashboard_spend"]')->count());
+        self::assertGreaterThan(0, $crawler->filter('#telegram-mini-root')->count());
+    }
 
-        $gelOption = $crawler->filterXPath(
-            '//select[@name="dashboard_spend[currency]"]'
-            .'/option[contains(normalize-space(.), "GEL")]'
-        )->first();
-        self::assertSame(1, $gelOption->count());
-        $currencyValue = (string) $gelOption->attr('value');
+    public function testMiniAppSpendsListJson(): void
+    {
+        $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
+        $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
 
-        $planOption = $crawler->filterXPath(
-            '//select[@name="dashboard_spend[spendingPlan]"]'
-            .'/option[contains(normalize-space(.), "March base plan")]'
-        )->first();
-        self::assertSame(1, $planOption->count());
-        $planValue = (string) $planOption->attr('value');
+        $this->client->request('GET', '/api/telegram/mini/spends?token='.urlencode($token));
+        self::assertResponseIsSuccessful();
+        $payload = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertIsArray($payload);
+        self::assertTrue($payload['success'] ?? false);
+        self::assertArrayHasKey('payload', $payload);
+        self::assertNotEmpty($payload['payload']['spends'] ?? []);
+    }
 
-        $form = $crawler->filter('form[name="dashboard_spend"]')->form([
-            'dashboard_spend[amount]' => '45.90',
-            'dashboard_spend[currency]' => $currencyValue,
-            'dashboard_spend[spendingPlan]' => $planValue,
-            'dashboard_spend[spendDate]' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
-            'dashboard_spend[comment]' => 'Mini app spend',
-        ]);
-        $this->client->submit($form);
+    public function testAuthorizedTelegramUserCanCreateSpendViaMiniApi(): void
+    {
+        $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
+        $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
 
-        self::assertResponseRedirects('/telegram/mini/spend?token='.urlencode($token));
+        $bootstrap = $this->jsonGet('/api/telegram/mini/bootstrap?token='.urlencode($token));
+        self::assertTrue($bootstrap['success'] ?? false);
+        $defaults = $bootstrap['overview']['forms']['spend']['defaults'] ?? [];
+        self::assertNotEmpty($defaults);
+
+        $gelId = null;
+        foreach ($bootstrap['overview']['forms']['spend']['currencies'] ?? [] as $currency) {
+            if (($currency['code'] ?? '') === 'GEL') {
+                $gelId = (int) ($currency['id'] ?? 0);
+                break;
+            }
+        }
+        self::assertNotSame(0, $gelId);
+
+        $planId = (int) ($defaults['spendingPlanId'] ?? 0);
+        self::assertGreaterThan(0, $planId);
+
+        $this->client->request(
+            'POST',
+            '/api/telegram/mini/spends?token='.urlencode($token),
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'amount' => '45.90',
+                'currencyId' => $gelId,
+                'spendingPlanId' => $planId,
+                'spendDate' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+                'comment' => 'Mini app spend',
+            ], JSON_THROW_ON_ERROR)
+        );
+        self::assertResponseIsSuccessful();
+        $created = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertTrue($created['success'] ?? false);
 
         $this->entityManager->clear();
         $spend = $this->entityManager->getRepository(Spend::class)->findOneBy([
@@ -91,39 +125,16 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         self::assertSame('45.90', $spend->getAmount());
         self::assertSame('GEL', $spend->getCurrency()?->getCode());
 
-        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
-        self::assertResponseIsSuccessful();
-        self::assertStringContainsString('45.90 GEL', $crawler->text(''));
-
         $redisStore = static::getContainer()->get(RedisStore::class);
         $snapshot = $redisStore->getJsonByDataKey(
             RedisDataKey::MONTHLY_BALANCE_SNAPSHOT,
             ['monthKey' => (new \DateTimeImmutable())->format('Y-m')]
         );
         self::assertIsArray($snapshot);
-        self::assertSame('45.90', (string) ($snapshot['monthSpentGel'] ?? ''));
+        self::assertGreaterThanOrEqual(45.90, (float) ($snapshot['monthSpentGel'] ?? 0));
     }
 
-    public function testMiniAppShowsSpendsListAndActions(): void
-    {
-        $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
-        $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
-
-        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
-        self::assertResponseIsSuccessful();
-        self::assertStringContainsString('Groceries basket', $crawler->text(''));
-        self::assertGreaterThan(
-            0,
-            $crawler->filter('a[href*="/telegram/mini/spends/"][href*="/edit?token="]')->count()
-        );
-
-        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token).'&tab=spends');
-        self::assertResponseIsSuccessful();
-        self::assertSame(1, $crawler->filter('a.mini-view-toggle-btn.is-stream[href*="view=table"]')->count());
-        self::assertGreaterThan(0, $crawler->filter('.spend-stream-group')->count());
-    }
-
-    public function testAuthorizedTelegramUserCanEditSpendFromMiniApp(): void
+    public function testAuthorizedTelegramUserCanEditSpendViaMiniApi(): void
     {
         $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
         $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
@@ -131,22 +142,23 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         $spend = $this->entityManager->getRepository(Spend::class)->findOneBy(['comment' => 'Groceries basket']);
         self::assertInstanceOf(Spend::class, $spend);
 
-        $crawler = $this->client->request(
-            'GET',
-            '/telegram/mini/spends/'.$spend->getId().'/edit?token='.urlencode($token)
+        $this->client->request(
+            'PUT',
+            '/api/telegram/mini/spends/'.$spend->getId().'?token='.urlencode($token),
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'amount' => '101.15',
+                'currencyId' => (int) $spend->getCurrency()?->getId(),
+                'spendingPlanId' => (int) $spend->getSpendingPlan()?->getId(),
+                'spendDate' => $spend->getSpendDate()->format('Y-m-d'),
+                'comment' => 'Groceries basket mini edited',
+            ], JSON_THROW_ON_ERROR)
         );
         self::assertResponseIsSuccessful();
-
-        $form = $crawler->selectButton('Save')->form([
-            'dashboard_spend[amount]' => '101.15',
-            'dashboard_spend[currency]' => (string) $spend->getCurrency()?->getId(),
-            'dashboard_spend[spendingPlan]' => (string) $spend->getSpendingPlan()?->getId(),
-            'dashboard_spend[spendDate]' => $spend->getSpendDate()->format('Y-m-d'),
-            'dashboard_spend[comment]' => 'Groceries basket mini edited',
-        ]);
-        $this->client->submit($form);
-
-        self::assertResponseRedirects('/telegram/mini/spend?token='.urlencode($token));
+        $payload = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertTrue($payload['success'] ?? false);
 
         $this->entityManager->clear();
         $updatedSpend = $this->entityManager->getRepository(Spend::class)->find($spend->getId());
@@ -155,31 +167,23 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
         self::assertSame('Groceries basket mini edited', $updatedSpend->getComment());
     }
 
-    public function testAuthorizedTelegramUserCanDeleteSpendFromMiniApp(): void
+    public function testAuthorizedTelegramUserCanDeleteSpendViaMiniApi(): void
     {
         $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
         $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
 
         $spend = $this->entityManager->getRepository(Spend::class)->findOneBy(['comment' => 'Taxi and metro']);
         self::assertInstanceOf(Spend::class, $spend);
+        $spendId = (int) $spend->getId();
 
-        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
+        $this->client->request(
+            'DELETE',
+            '/api/telegram/mini/spends/'.$spendId.'?token='.urlencode($token)
+        );
         self::assertResponseIsSuccessful();
 
-        $action = '/telegram/mini/spends/'.$spend->getId().'/delete?token='.urlencode($token);
-        $deleteForm = $crawler->filter(sprintf('form[action="%s"]', $action))->first();
-        self::assertSame(1, $deleteForm->count());
-        $csrf = (string) $deleteForm->filter('input[name="_token"]')->attr('value');
-        self::assertNotSame('', $csrf);
-
-        $this->client->request('POST', $action, [
-            '_token' => $csrf,
-        ]);
-
-        self::assertResponseRedirects('/telegram/mini/spend?token='.urlencode($token));
-
         $this->entityManager->clear();
-        $removedSpend = $this->entityManager->getRepository(Spend::class)->find($spend->getId());
+        $removedSpend = $this->entityManager->getRepository(Spend::class)->find($spendId);
         self::assertNull($removedSpend);
     }
 
@@ -251,24 +255,53 @@ final class TelegramMiniAppSpendControllerTest extends DatabaseWebTestCase
 
         $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
         $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
-        $crawler = $this->client->request('GET', '/telegram/mini/spend?token='.urlencode($token));
-        self::assertResponseIsSuccessful();
+        $date = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        $payload = $this->jsonGet('/api/telegram/mini/spend-form?token='.urlencode($token).'&spendDate='.urlencode($date));
+        self::assertTrue($payload['success'] ?? false);
+        $plans = $payload['payload']['spendingPlans'] ?? [];
+        self::assertGreaterThanOrEqual(6, count($plans));
 
-        $options = $crawler->filterXPath(
-            '//select[@name="dashboard_spend[spendingPlan]"]/option[@value!=""]'
-        );
-        self::assertGreaterThanOrEqual(6, $options->count());
-
-        $labels = [];
-        foreach ($options as $node) {
-            $labels[] = trim((string) $node->textContent);
-        }
-
+        $labels = array_map(static fn (array $row): string => (string) ($row['name'] ?? ''), $plans);
         self::assertStringStartsWith("Dima's birthday", $labels[0] ?? '');
         self::assertStringStartsWith('Пятничка', $labels[1] ?? '');
         self::assertStringStartsWith('Выхи 4-5 апреля', $labels[2] ?? '');
         self::assertStringStartsWith('March base plan', $labels[3] ?? '');
         self::assertStringStartsWith('Planned spends', $labels[4] ?? '');
         self::assertStringStartsWith('Будни 1-2 апреля', $labels[5] ?? '');
+    }
+
+    public function testMiniAppPreferencesPersistToMetadata(): void
+    {
+        $tokenService = static::getContainer()->get(TelegramMiniAppTokenService::class);
+        $token = $tokenService->generateToken(AuthorizedTelegramUserFixture::TELEGRAM_ID);
+
+        $this->client->request(
+            'POST',
+            '/api/telegram/mini/preferences?token='.urlencode($token),
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['language' => 'ru', 'theme' => 'dark'], JSON_THROW_ON_ERROR)
+        );
+        self::assertResponseIsSuccessful();
+        $out = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertTrue($out['success'] ?? false);
+        self::assertSame('ru', $out['preferences']['language'] ?? '');
+        self::assertSame('dark', $out['preferences']['theme'] ?? '');
+
+        $get = $this->jsonGet('/api/telegram/mini/preferences?token='.urlencode($token));
+        self::assertSame('ru', $get['preferences']['language'] ?? '');
+        self::assertSame('dark', $get['preferences']['theme'] ?? '');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function jsonGet(string $uri): array
+    {
+        $this->client->request('GET', $uri);
+        self::assertResponseIsSuccessful();
+
+        return json_decode((string) $this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
     }
 }

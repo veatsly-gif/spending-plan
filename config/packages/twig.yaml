@@ -2,9 +2,6 @@ twig:
     file_name_pattern: '*.twig'
     date:
         timezone: '%app.display_timezone%'
-    globals:
-        app_frontend_mode: '%app.frontend_mode%'
-
 when@test:
     twig:
         strict_variables: true

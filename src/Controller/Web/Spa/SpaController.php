@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Web\Spa;
 
-use App\Service\Frontend\FrontendModeResolver;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -12,7 +11,6 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SpaController extends AbstractController
 {
     public function __construct(
-        private readonly FrontendModeResolver $frontendModeResolver,
         private readonly string $projectDir,
     ) {
     }
@@ -23,13 +21,9 @@ final class SpaController extends AbstractController
         return $this->redirectToRoute('web_spa_entry', ['path' => 'login']);
     }
 
-    #[Route('/app/{path}', name: 'web_spa_entry', requirements: ['path' => 'login|dashboard'], methods: ['GET'])]
+    #[Route('/app/{path}', name: 'web_spa_entry', requirements: ['path' => '.+'], methods: ['GET'])]
     public function entry(string $path): Response
     {
-        if (!$this->frontendModeResolver->isReactMode()) {
-            return $this->redirectToRoute('login' === $path ? 'app_login' : 'app_dashboard');
-        }
-
         $indexFile = $this->projectDir.'/public/spa/index.html';
         if (!is_file($indexFile)) {
             return new Response(

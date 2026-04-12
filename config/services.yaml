@@ -11,14 +11,8 @@ parameters:
     deepl_api_base_url_default: 'https://api-free.deepl.com'
     deepl_usage_stop_percent_default: '95'
     app_display_timezone_default: 'UTC'
-    app_frontend_mode_default: 'twig'
-    app_frontend_react_dev_server_url_default: 'http://localhost:5173'
-    app_frontend_api_base_url_default: '/api'
     app_api_token_ttl_default: '86400'
     app.display_timezone: '%env(default:app_display_timezone_default:APP_DISPLAY_TIMEZONE)%'
-    app.frontend_mode: '%env(default:app_frontend_mode_default:APP_FRONTEND_MODE)%'
-    app.frontend_react_dev_server_url: '%env(default:app_frontend_react_dev_server_url_default:APP_FRONTEND_REACT_DEV_SERVER_URL)%'
-    app.frontend_api_base_url: '%env(default:app_frontend_api_base_url_default:APP_FRONTEND_API_BASE_URL)%'
     app.api_token_ttl: '%env(int:default:app_api_token_ttl_default:APP_API_TOKEN_TTL)%'
 
 services:
@@ -69,13 +63,6 @@ services:
         arguments:
             $timezoneName: '%app.display_timezone%'
 
-    App\Service\Frontend\FrontendModeResolver:
-        arguments:
-            $frontendMode: '%app.frontend_mode%'
-            $reactDevServerUrl: '%app.frontend_react_dev_server_url%'
-            $apiBaseUrl: '%app.frontend_api_base_url%'
-            $appEnv: '%kernel.environment%'
-
     App\Service\Security\ApiTokenService:
         arguments:
             $secret: '%kernel.secret%'
@@ -84,6 +71,11 @@ services:
     App\Controller\Web\Spa\SpaController:
         arguments:
             $projectDir: '%kernel.project_dir%'
+
+    App\Controller\Web\TelegramMiniAppController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
